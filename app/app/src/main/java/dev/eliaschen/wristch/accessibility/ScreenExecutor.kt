@@ -6,12 +6,13 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Path
+import android.graphics.Rect
 import android.os.Bundle
-import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
+/** Result of one interaction attempt. */
 sealed interface ActionResult {
     data object Success : ActionResult
     data class Failed(val reason: String) : ActionResult
@@ -19,25 +20,38 @@ sealed interface ActionResult {
 
 class ScreenExecutor(private val service: AccessibilityService) {
 
-    /** Walks up to the nearest clickable ancestor and clicks it. */
-    fun click(node: AccessibilityNodeInfo): ActionResult {
-        var current: AccessibilityNodeInfo? = node
-        while (current != null) {
-            if (current.isClickable && current.tryAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                return ActionResult.Success
-            }
-            current = current.parent
-        }
-        return ActionResult.Failed("No clickable node in this node's ancestry.")
+    suspend fun click(node: AccessibilityNodeInfo): ActionResult {
+        val bounds = Rect().also { node.getBoundsInScreen(it) }
+        if (bounds.isEmpty) return ActionResult.Failed("Node has no on-screen bounds.")
+        return tap(bounds.exactCenterX(), bounds.exactCenterY())
     }
 
-    /** Taps a raw screen point via a synthetic gesture. */
-    suspend fun tap(x: Int, y: Int): ActionResult {
-        val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+    suspend fun tap(x: Float, y: Float): ActionResult {
+        val path = Path().apply { moveTo(x, y) }
         val stroke = GestureDescription.StrokeDescription(path, 0, TAP_DURATION_MS)
         return if (dispatch(stroke)) ActionResult.Success else ActionResult.Failed("Gesture dispatch was rejected.")
     }
 
+    suspend fun swipe(
+        startX: Float,
+        startY: Float,
+        endX: Float,
+        endY: Float,
+        durationMs: Long = SWIPE_DURATION_MS,
+    ): ActionResult {
+        val path = Path().apply {
+            moveTo(startX, startY)
+            lineTo(endX, endY)
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
+        return if (dispatch(stroke)) ActionResult.Success else ActionResult.Failed("Gesture dispatch was rejected.")
+    }
+
+    /**
+     * Scrolls via the node's own action rather than a gesture - deliberately unlike
+     * [click]. A scrollable container honours `ACTION_SCROLL_*` reliably, and the node
+     * action can move content a synthetic swipe would not reach.
+     */
     fun scroll(node: AccessibilityNodeInfo, forward: Boolean): ActionResult {
         val action = if (forward) {
             AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
@@ -47,26 +61,7 @@ class ScreenExecutor(private val service: AccessibilityService) {
         return if (node.tryAction(action)) ActionResult.Success else ActionResult.Failed("Node refused the scroll action.")
     }
 
-    suspend fun performGestureClick() {
-        Log.i("Wristch", "performGestureClick")
-    }
-
-    /** Raw-coordinate swipe, for scrolling surfaces with no accessible scrollable node. */
-    suspend fun swipe(
-        startX: Int,
-        startY: Int,
-        endX: Int,
-        endY: Int,
-        durationMs: Long = SWIPE_DURATION_MS
-    ): ActionResult {
-        val path = Path().apply {
-            moveTo(startX.toFloat(), startY.toFloat())
-            lineTo(endX.toFloat(), endY.toFloat())
-        }
-        val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
-        return if (dispatch(stroke)) ActionResult.Success else ActionResult.Failed("Gesture dispatch was rejected.")
-    }
-
+    /** No coordinate equivalent exists for typing, so this stays node-based. */
     fun setText(node: AccessibilityNodeInfo, text: String): ActionResult {
         node.tryAction(AccessibilityNodeInfo.ACTION_FOCUS)
 
@@ -99,6 +94,11 @@ class ScreenExecutor(private val service: AccessibilityService) {
         }
     }
 
+    /**
+     * `dispatchGesture` returns false outright when the service may not inject gestures,
+     * and in that case the callback never fires - hence resuming on the return value too,
+     * without which the coroutine would hang forever.
+     */
     private suspend fun dispatch(stroke: GestureDescription.StrokeDescription): Boolean =
         suspendCancellableCoroutine { continuation ->
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
@@ -117,11 +117,7 @@ class ScreenExecutor(private val service: AccessibilityService) {
 
     /** A stale node (the real screen moved on) can make `performAction` return false or throw; both fold into `false`. */
     private fun AccessibilityNodeInfo.tryAction(action: Int, arguments: Bundle? = null): Boolean =
-        runCatching {
-            if (arguments != null) performAction(action, arguments) else performAction(
-                action
-            )
-        }
+        runCatching { if (arguments != null) performAction(action, arguments) else performAction(action) }
             .getOrDefault(false)
 
     companion object {
