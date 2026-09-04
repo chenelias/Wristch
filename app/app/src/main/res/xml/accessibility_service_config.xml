@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The agent needs to see every screen (no packageNames filter - it is deliberately
+  app-agnostic) and to act on them, hence canPerformGestures. canTakeScreenshot lets
+  AccessibilityService.takeScreenshot() capture the display without a MediaProjection
+  consent prompt, which is what makes unattended screenshot capture possible at all.
+
+  flagIncludeNotImportantViews is on because many apps mark their containers
+  not-important-for-accessibility while still drawing the only text on screen.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewFocused"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    android:description="@string/accessibility_service_description"
+    android:notificationTimeout="100" />
