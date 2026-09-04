@@ -47,6 +47,19 @@ class ScreenExecutor(private val service: AccessibilityService) {
         return if (dispatch(stroke)) ActionResult.Success else ActionResult.Failed("Gesture dispatch was rejected.")
     }
 
+    fun pressHome(): ActionResult =
+        globalAction(AccessibilityService.GLOBAL_ACTION_HOME, "home")
+
+    fun goBack(): ActionResult =
+        globalAction(AccessibilityService.GLOBAL_ACTION_BACK, "back")
+
+    private fun globalAction(action: Int, name: String): ActionResult =
+        if (service.performGlobalAction(action)) {
+            ActionResult.Success
+        } else {
+            ActionResult.Failed("System refused the $name action.")
+        }
+
     /**
      * Scrolls via the node's own action rather than a gesture - deliberately unlike
      * [click]. A scrollable container honours `ACTION_SCROLL_*` reliably, and the node
