@@ -24,12 +24,21 @@ data class RunStep(
     val at: Long = 0L,
 )
 
-/** A single agent run: what it was asked to do, what it did, and how it ended. */
+/**
+ * A single agent run: what it was asked to do, what it did, and how it ended.
+ *
+ * [goal] is the sentence that was typed, kept word for word because it is the instruction
+ * - it is what a run is sent again with. [title] is the short name the model writes for
+ * it, which is what the run is listed under: a typed goal is a paragraph as often as it is
+ * a phrase, and a list of paragraphs cannot be scanned. It arrives a moment after the run
+ * starts and is blank until then, so read runs through [label] rather than either field.
+ */
 @Serializable
 data class RunRecord(
     val id: String,
     val goal: String,
     val startedAt: Long,
+    val title: String = "",
     val endedAt: Long? = null,
     val status: RunStatus = RunStatus.RUNNING,
     val outcome: String = "",
@@ -37,6 +46,13 @@ data class RunRecord(
 ) {
     /** Null while the run is still going, so callers cannot show a duration that grows. */
     val durationMs: Long? get() = endedAt?.minus(startedAt)
+
+    /**
+     * What to call this run on screen: its title, or the goal until one has been written.
+     * A run titled in the second after it starts would otherwise appear in the list with
+     * no name at all.
+     */
+    val label: String get() = title.ifBlank { goal }
 }
 
 /**

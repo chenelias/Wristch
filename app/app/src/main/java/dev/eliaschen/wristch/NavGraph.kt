@@ -8,26 +8,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -37,7 +29,9 @@ import dev.eliaschen.wristch.ui.screen.AccessibilityBlockerScreen
 import dev.eliaschen.wristch.ui.screen.AgentScreen
 import dev.eliaschen.wristch.ui.screen.HistoryScreen
 import dev.eliaschen.wristch.ui.screen.HomeScreen
+import dev.eliaschen.wristch.ui.component.WristchToolbar
 import dev.eliaschen.wristch.ui.screen.RunDetailScreen
+import dev.eliaschen.wristch.ui.screen.SearchScreen
 import dev.eliaschen.wristch.ui.screen.VibeDetailScreen
 import dev.eliaschen.wristch.ui.screen.VibeScreen
 import kotlinx.serialization.Serializable
@@ -79,16 +73,8 @@ private fun pageTransition(forward: Boolean): ContentTransform {
     )
 }
 
-sealed interface TopLevelRoute : NavKey {
-    val label: String
-    val icon: ImageVector
-}
-
 @Serializable
-data object Home : TopLevelRoute {
-    override val label get() = "Home"
-    override val icon get() = Icons.Default.Home
-}
+data object Home : NavKey
 
 /**
  * The full run list. Home shows the last few runs; this is what the arrow beside them
@@ -109,14 +95,19 @@ data object Vibe : NavKey
 @Serializable
 data class VibeDetail(val vibeId: String) : NavKey
 
+/** One field over past runs and the notebook, opened from the toolbar's search bar. */
 @Serializable
-data object Agent : TopLevelRoute {
-    override val label get() = "Agent"
-    override val icon get() = Icons.Default.PlayArrow
-}
+data object Search : NavKey
 
-private val TOP_LEVEL_ROUTES: List<TopLevelRoute> =
-    listOf(Home, Agent)
+/**
+ * Where a run is started and watched - what the toolbar's action button opens.
+ *
+ * [goal] is what the screen opens with already typed: null from the toolbar, where the
+ * sentence is still to be written, and the old goal when a finished run is being sent
+ * again from its detail screen.
+ */
+@Serializable
+data class Agent(val goal: String? = null) : NavKey
 
 @Composable
 fun WristchNavGraph(modifier: Modifier = Modifier) {
@@ -126,115 +117,95 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
         return
     }
 
-    val navigator = remember { TopLevelBackStack<NavKey>(Home) }
+    // One stack, because there is one place to come back to. The app used to have a tab
+    // bar and a stack per tab; the toolbar replaced it, and Agent became somewhere you go
+    // and return from rather than somewhere you live.
+    val backStack = remember { mutableStateListOf<NavKey>(Home) }
+    // The toolbar belongs to home: it is the bar you search and start runs from, and on a
+    // screen that is itself a search or a run it would only offer you where you already are.
+    val showToolbar by remember { derivedStateOf { backStack.lastOrNull() == Home } }
 
+    // The Scaffold holds back none of the window: every screen draws to all four edges and
+    // pads itself where its own content would otherwise sit under a system bar. Padding the
+    // whole app here instead would leave a band of background above and below it.
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        bottomBar = {
-            NavigationBar {
-                TOP_LEVEL_ROUTES.forEach { route ->
-                    NavigationBarItem(
-                        selected = route == navigator.topLevelKey,
-                        onClick = { navigator.addTopLevel(route) },
-                        icon = {
-                            Icon(
-                                imageVector = route.icon,
-                                contentDescription = route.label,
-                            )
-                        },
-                        label = { Text(route.label) },
-                    )
-                }
+        contentWindowInsets = WindowInsets(0),
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavDisplay(
+                backStack = backStack,
+                onBack = { backStack.removeLastOrNull() },
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = { pageTransition(forward = true) },
+                popTransitionSpec = { pageTransition(forward = false) },
+                // The edge the swipe came from decides which way the pages move, so a
+                // gesture from the right runs the animation the other way round.
+                predictivePopTransitionSpec = { edge ->
+                    pageTransition(forward = edge == NavigationEvent.EDGE_RIGHT)
+                },
+                entryProvider = entryProvider {
+                    entry<Home> {
+                        HomeScreen(
+                            onOpenRun = { backStack.add(RunDetail(it)) },
+                            onOpenHistory = { backStack.add(History) },
+                            onOpenVibe = { backStack.add(VibeDetail(it)) },
+                            onOpenVibes = { backStack.add(Vibe) },
+                        )
+                    }
+                    entry<History> {
+                        HistoryScreen(
+                            onOpenRun = { backStack.add(RunDetail(it)) },
+                            onBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                    entry<RunDetail> { key ->
+                        RunDetailScreen(
+                            runId = key.runId,
+                            onBack = { backStack.removeLastOrNull() },
+                            onRunAgain = { goal ->
+                                // Replace rather than stack: coming back from the run the
+                                // detail screen just launched should land on history, not
+                                // on the record of the run that was copied.
+                                backStack.removeLastOrNull()
+                                backStack.add(Agent(goal))
+                            },
+                        )
+                    }
+                    entry<Vibe> {
+                        VibeScreen(
+                            onOpenVibe = { backStack.add(VibeDetail(it)) },
+                            onBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                    entry<VibeDetail> { key ->
+                        VibeDetailScreen(
+                            vibeId = key.vibeId,
+                            onBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                    entry<Search> {
+                        SearchScreen(
+                            onOpenRun = { backStack.add(RunDetail(it)) },
+                            onBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                    entry<Agent> { key ->
+                        AgentScreen(
+                            initialGoal = key.goal,
+                            onBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                },
+            )
+
+            if (showToolbar) {
+                WristchToolbar(
+                    onSearch = { backStack.add(Search) },
+                    onAgent = { backStack.add(Agent()) },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
-        },
-    ) { innerPadding ->
-        NavDisplay(
-            backStack = navigator.backStack,
-            onBack = { navigator.removeLast() },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            transitionSpec = { pageTransition(forward = true) },
-            popTransitionSpec = { pageTransition(forward = false) },
-            // The edge the swipe came from decides which way the pages move, so a
-            // gesture from the right runs the animation the other way round.
-            predictivePopTransitionSpec = { edge ->
-                pageTransition(forward = edge == NavigationEvent.EDGE_RIGHT)
-            },
-            entryProvider = entryProvider {
-                entry<Home> {
-                    HomeScreen(
-                        onOpenRun = { navigator.add(RunDetail(it)) },
-                        onOpenHistory = { navigator.add(History) },
-                        onOpenVibe = { navigator.add(VibeDetail(it)) },
-                        onOpenVibes = { navigator.add(Vibe) },
-                    )
-                }
-                entry<History> {
-                    HistoryScreen(
-                        onOpenRun = { navigator.add(RunDetail(it)) },
-                        onBack = { navigator.removeLast() },
-                    )
-                }
-                entry<RunDetail> { key ->
-                    RunDetailScreen(
-                        runId = key.runId,
-                        onBack = { navigator.removeLast() },
-                    )
-                }
-                entry<Vibe> {
-                    VibeScreen(
-                        onOpenVibe = { navigator.add(VibeDetail(it)) },
-                        onBack = { navigator.removeLast() },
-                    )
-                }
-                entry<VibeDetail> { key ->
-                    VibeDetailScreen(
-                        vibeId = key.vibeId,
-                        onBack = { navigator.removeLast() },
-                    )
-                }
-                entry<Agent> { AgentScreen() }
-            },
-        )
-    }
-}
-
-class TopLevelBackStack<T : Any>(startKey: T) {
-
-    private val topLevelStacks: LinkedHashMap<T, SnapshotStateList<T>> = linkedMapOf(
-        startKey to mutableStateListOf(startKey),
-    )
-
-    var topLevelKey by mutableStateOf(startKey)
-        private set
-
-    val backStack = mutableStateListOf(startKey)
-
-    private fun updateBackStack() = backStack.apply {
-        clear()
-        addAll(topLevelStacks.flatMap { it.value })
-    }
-
-    fun addTopLevel(key: T) {
-        if (topLevelStacks[key] == null) {
-            topLevelStacks.put(key, mutableStateListOf(key))
-        } else {
-            topLevelStacks.apply { remove(key)?.let { put(key, it) } }
         }
-        topLevelKey = key
-        updateBackStack()
-    }
-
-    fun add(key: T) {
-        topLevelStacks[topLevelKey]?.add(key)
-        updateBackStack()
-    }
-
-    fun removeLast() {
-        val removedKey = topLevelStacks[topLevelKey]?.removeLastOrNull()
-        topLevelStacks.remove(removedKey)
-        topLevelKey = topLevelStacks.keys.last()
-        updateBackStack()
     }
 }

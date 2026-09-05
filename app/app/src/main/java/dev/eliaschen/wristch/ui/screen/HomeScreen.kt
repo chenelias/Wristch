@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -39,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import dev.eliaschen.wristch.history.RunHistory
 import dev.eliaschen.wristch.history.RunRecord
 import dev.eliaschen.wristch.history.RunStatus
+import dev.eliaschen.wristch.ui.component.WristchToolbarDefaults
 import dev.eliaschen.wristch.vibe.Vibe
 import dev.eliaschen.wristch.vibe.VibeStore
 
@@ -83,13 +86,26 @@ fun HomeScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
+            // Inside the scroll, so the list passes behind the gesture bar on its way up
+            // and only comes to rest clear of it.
+            .navigationBarsPadding()
+            // The toolbar floats over this screen rather than sitting under it, so the
+            // content has to stop short of where it lands - otherwise the last run of the
+            // day is permanently behind the search bar.
+            .padding(bottom = WristchToolbarDefaults.ContentPadding),
     ) {
-        Text(
-            text = "Wristch",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp),
-        )
+        // Centred, because there is nothing beside it to balance against: the app's name
+        // is the whole of this bar, and left-aligning it only reads as a title when there
+        // is a back arrow or an action sharing the row.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(start = 24.dp, end = 24.dp, top = 24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = "Wristch", style = MaterialTheme.typography.headlineSmall)
+        }
 
         SectionHeader(
             title = "Vibes",
@@ -124,7 +140,7 @@ fun HomeScreen(
 
         if (recent.isEmpty()) {
             Text(
-                text = "No runs yet. Anything you send from the Agent tab shows up here.",
+                text = "No runs yet. Anything you start from the button below shows up here.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 24.dp),
             )

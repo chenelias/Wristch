@@ -5,8 +5,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -53,6 +60,7 @@ import dev.eliaschen.wristch.history.RunRecord
 import dev.eliaschen.wristch.history.RunStatus
 import dev.eliaschen.wristch.history.RunStep
 import androidx.compose.ui.graphics.vector.ImageVector
+import dev.eliaschen.wristch.ui.component.WristchToolbarDefaults
 import dev.eliaschen.wristch.ui.icon.WristchIcons
 import dev.eliaschen.wristch.ui.shape.WristchShapes
 import java.time.format.DateTimeFormatter
@@ -70,6 +78,7 @@ private val STEP_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("H
 fun RunDetailScreen(
     runId: String,
     onBack: () -> Unit,
+    onRunAgain: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val runs by RunHistory.runs.collectAsState()
@@ -80,6 +89,7 @@ fun RunDetailScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
+                .safeDrawingPadding()
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -92,7 +102,7 @@ fun RunDetailScreen(
     if (confirmDelete) {
         ConfirmDialog(
             title = "Delete this run?",
-            body = "\"${run.goal.ifBlank { "(no goal)" }}\" and its " +
+            body = "\"${run.label.ifBlank { "(no goal)" }}\" and its " +
                 "${run.steps.size} recorded actions will be removed. This cannot be undone.",
             confirmLabel = "Delete",
             onConfirm = {
@@ -106,50 +116,128 @@ fun RunDetailScreen(
         )
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(24.dp),
-        // No arrangement spacing: the steps have to touch, or the rail running down the
-        // timeline would break into pieces at every gap. Each item carries its own.
-    ) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BackToHistory(onBack)
-                Spacer(Modifier.weight(1f))
-                // A run still going has nowhere else to report to, so it cannot be
-                // deleted out from under itself.
-                if (run.status != RunStatus.RUNNING) {
-                    IconButton(onClick = { confirmDelete = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete this run",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
+    // A finished run can be asked for again; one still going cannot, because there is
+    // only ever one run at a time and it is this one.
+    val canRepeat = run.status != RunStatus.RUNNING && run.goal.isNotBlank()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = WindowInsets.safeDrawing
+                .add(
+                    WindowInsets(
+                        left = 24.dp,
+                        top = 24.dp,
+                        right = 24.dp,
+                        // Room for the bar floating over the end of the timeline, so the last
+                        // step is readable rather than half behind it.
+                        bottom = if (canRepeat) WristchToolbarDefaults.ContentPadding else 24.dp,
+                    ),
+                )
+                .asPaddingValues(),
+            // No arrangement spacing: the steps have to touch, or the rail running down the
+            // timeline would break into pieces at every gap. Each item carries its own.
+        ) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BackToHistory(onBack)
+                    Spacer(Modifier.weight(1f))
+                    // A run still going has nowhere else to report to, so it cannot be
+                    // deleted out from under itself.
+                    if (run.status != RunStatus.RUNNING) {
+                        IconButton(onClick = { confirmDelete = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete this run",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
+            item { Box(Modifier.padding(bottom = 16.dp)) { Header(run) } }
+            item {
+                Text(
+                    text = if (run.steps.isEmpty()) "No actions recorded" else "Actions",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+                )
+            }
+            itemsIndexed(run.steps) { index, step ->
+                TimelineStep(
+                    step = step,
+                    isFirst = index == 0,
+                    isLast = index == run.steps.lastIndex,
+                )
+            }
         }
-        item { Box(Modifier.padding(bottom = 16.dp)) { Header(run) } }
-        item {
-            Text(
-                text = if (run.steps.isEmpty()) "No actions recorded" else "Actions",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+
+        if (canRepeat) {
+            RunAgainBar(
+                onRunAgain = { onRunAgain(run.goal) },
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
-        itemsIndexed(run.steps) { index, step ->
-            TimelineStep(
-                step = step,
-                isFirst = index == 0,
-                isLast = index == run.steps.lastIndex,
-            )
+    }
+}
+
+/**
+ * The bar that floats over the end of a finished run: ask for the same thing again.
+ *
+ * Floating rather than a row at the bottom of the timeline, because the offer has to be
+ * reachable while reading any part of the log - a run with forty steps would otherwise
+ * hide it behind a scroll to the end. The same pill and the same squircle as the home
+ * toolbar, since it is the same gesture: this is where a run is started from here.
+ *
+ * It sends the sentence that was typed the first time, not the title the run is listed
+ * under - the title is a description of what happened, and the goal is the instruction.
+ */
+@Composable
+private fun RunAgainBar(onRunAgain: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 15.dp),
+        horizontalArrangement = Arrangement.spacedBy(15.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Card(
+            modifier = Modifier.weight(1f),
+            onClick = onRunAgain,
+            shape = CircleShape,
+            elevation = CardDefaults.cardElevation(3.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+            ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .height(50.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = WristchIcons.Sparkle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = "Run this task again",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
     }
 }
@@ -182,7 +270,17 @@ private fun BackToHistory(onBack: () -> Unit) {
 @Composable
 private fun Header(run: RunRecord) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(run.goal.ifBlank { "(no goal)" }, style = MaterialTheme.typography.headlineSmall)
+        Text(run.label.ifBlank { "(no goal)" }, style = MaterialTheme.typography.headlineSmall)
+
+        // The sentence that was typed, kept under the name written for it: the title is
+        // what the run is recognised by, and this is what running it again will send.
+        if (run.title.isNotBlank() && run.goal.isNotBlank()) {
+            Text(
+                text = run.goal,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         val statusText = when (run.status) {
             RunStatus.RUNNING -> "Running"

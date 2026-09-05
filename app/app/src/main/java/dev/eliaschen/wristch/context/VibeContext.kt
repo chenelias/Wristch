@@ -35,10 +35,19 @@ object VibeContext {
      *
      * The sources run together: they touch unrelated content providers, and adding a
      * calendar query to a GPS fix should not add to how long the user waits.
+     *
+     * [exclude] drops sources the caller does not want in this particular block, even
+     * though the vibe has them switched on - a run and a screen can want different halves
+     * of the same vibe.
      */
-    suspend fun gather(context: Context, vibe: Vibe, goal: String): String? = coroutineScope {
+    suspend fun gather(
+        context: Context,
+        vibe: Vibe,
+        goal: String,
+        exclude: Set<VibeSource> = emptySet(),
+    ): String? = coroutineScope {
         val app = context.applicationContext
-        val usable = vibe.sources.filter { it.isGranted(app) }
+        val usable = vibe.sources.filter { it !in exclude && it.isGranted(app) }
         if (usable.isEmpty()) return@coroutineScope null
 
         val snippets = usable.map { source ->
@@ -62,8 +71,13 @@ object VibeContext {
     /**
      * [Vibe.prompt] with that context appended - what a run should be started with.
      */
-    suspend fun preface(context: Context, vibe: Vibe, goal: String): String? {
-        val parts = listOfNotNull(vibe.prompt(), gather(context, vibe, goal))
+    suspend fun preface(
+        context: Context,
+        vibe: Vibe,
+        goal: String,
+        exclude: Set<VibeSource> = emptySet(),
+    ): String? {
+        val parts = listOfNotNull(vibe.prompt(), gather(context, vibe, goal, exclude))
         return if (parts.isEmpty()) null else parts.joinToString("\n\n")
     }
 

@@ -78,6 +78,31 @@ class ComputerUseAgent(
         .build()
 
     /**
+     * Names a run in a few words. No tools and no screenshot: it reads one sentence and
+     * writes a shorter one.
+     */
+    private val titleConfig: GenerateContentConfig = GenerateContentConfig.builder()
+        .systemInstruction(Content.fromParts(Part.fromText(TITLE_INSTRUCTION)))
+        .build()
+
+    /**
+     * A short name for [goal], or null if the model could not be reached.
+     *
+     * Null rather than a fallback string: the caller already has the goal, and a run left
+     * untitled reads as one titled with what was typed, which is the old behaviour and a
+     * perfectly good one to fail back to.
+     */
+    suspend fun title(goal: String): String? = runCatching {
+        withContext(Dispatchers.IO) {
+            client.models.generateContent(model, goal, titleConfig)
+        }.text()?.trim()?.trim('"')?.takeIf { it.isNotEmpty() }?.take(MAX_TITLE_CHARS)
+    }.getOrElse { error ->
+        // A run that cannot be named is still a run; this never touches its outcome.
+        Log.w(TAG, "title failed: ${error.message}")
+        null
+    }
+
+    /**
      * Runs [goal] to completion, or until [maxSteps] actions have been taken. [onStep] is
      * called with a one-line summary of every action, so a caller can show progress without
      * waiting for the whole run.
@@ -456,6 +481,31 @@ class ComputerUseAgent(
             something that exists only on the phone (its settings, its messages, its
             installed apps), set `needs_device` to true and leave `answer` empty.
         """.trimIndent()
+
+        private val TITLE_INSTRUCTION = """
+            You name tasks. You are given what someone asked their phone to do, and you
+            reply with a name for it - nothing else.
+
+            A name is read weeks later, next to forty others, by someone who no longer
+            remembers asking. So it has to say enough to be told apart from the runs
+            either side of it, not merely what kind of task it was.
+
+            Rules:
+            - Roughly six to twelve words. Long enough to carry the specifics, short
+              enough to read in one glance.
+            - Keep the concrete details from the request - who, what, where, which app,
+              which amount, which date. They are what makes one run recognisable among
+              forty: "Text Mum that I am home by seven", not "Send a message".
+            - Name the task, do not narrate it. No "The user wants to", no "Ask the
+              phone to" - start with the verb: "Book a table at Ho Lee for Friday".
+            - Do not invent detail the request does not contain, and do not guess at what
+              the outcome will be. Only what was asked for is known yet.
+            - Sentence case. No quotes, no trailing full stop, no emoji.
+            - Reply in the language the request was written in.
+        """.trimIndent()
+
+        /** Two lines in a history row; past that the row stops being scannable. */
+        private const val MAX_TITLE_CHARS = 100
 
         private const val REQUIRE_CONFIRMATION = "require_confirmation"
         private const val STOPPED = "Stopped by the user."

@@ -8,9 +8,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -42,6 +47,7 @@ import dev.eliaschen.wristch.ui.theme.VibeAccents
 import dev.eliaschen.wristch.ui.theme.accentOf
 import dev.eliaschen.wristch.vibe.Vibe
 import dev.eliaschen.wristch.vibe.VibeConfirmation
+import dev.eliaschen.wristch.context.rememberVibeSourceRequest
 import dev.eliaschen.wristch.vibe.VibeSource
 import dev.eliaschen.wristch.vibe.VibeStore
 
@@ -67,6 +73,7 @@ fun VibeDetailScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
+                .safeDrawingPadding()
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -94,10 +101,13 @@ fun VibeDetailScreen(
     }
 
     val edit: ((Vibe) -> Vibe) -> Unit = { change -> VibeStore.update(vibeId, change) }
+    val askFor = rememberVibeSourceRequest()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(24.dp),
+        contentPadding = WindowInsets.safeDrawing
+            .add(WindowInsets(left = 24.dp, top = 24.dp, right = 24.dp, bottom = 24.dp))
+            .asPaddingValues(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "top") {
@@ -236,6 +246,11 @@ fun VibeDetailScreen(
                         val sources = if (on) it.sources + source else it.sources - source
                         it.copy(sources = sources)
                     }
+                    // Asked here, at the moment the switch is flipped: a source switched
+                    // on without its permission is a promise the next run cannot keep,
+                    // and this is the one point where the person has just said why they
+                    // are being asked.
+                    if (on) askFor(setOf(source))
                 },
             )
         }

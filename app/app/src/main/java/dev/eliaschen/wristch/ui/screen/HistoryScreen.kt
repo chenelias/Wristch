@@ -5,11 +5,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -97,7 +102,7 @@ fun HistoryScreen(
 
     // No Scaffold here: the nav graph already owns one, and nesting a second would
     // apply the window insets twice.
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
         var confirmClear by remember { mutableStateOf(false) }
         val finished = runs.count { it.status != RunStatus.RUNNING }
 
@@ -164,7 +169,7 @@ fun HistoryScreen(
         if (visible.isEmpty()) {
             Text(
                 text = if (runs.isEmpty()) {
-                    "No runs yet. Anything you send from the Agent tab shows up here."
+                    "No runs yet. Anything you start from the agent button shows up here."
                 } else {
                     "No ${filter.label.lowercase()} runs."
                 },
@@ -176,7 +181,9 @@ fun HistoryScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            contentPadding = WindowInsets.safeDrawing
+                .add(WindowInsets(left = 24.dp, right = 24.dp, bottom = 24.dp))
+                .asPaddingValues(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // Grouped by day, with the header carried on the first run of each day rather
@@ -230,9 +237,12 @@ internal fun RunRow(run: RunRecord, onClick: () -> Unit) {
 //            Avatar(run)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = run.goal.ifBlank { "(no goal)" },
+                    text = run.label.ifBlank { "(no goal)" },
                     style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
+                    // Two lines, because a name that says which message to whom does not
+                    // fit on one - and the half that gets cut is the half that identifies
+                    // the run.
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(

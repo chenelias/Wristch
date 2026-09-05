@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Wristch" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Wristch" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Edge to edge from the first frame: the window background shows through the
+             bars before Compose draws, and the contrast enforcement flags stop the
+             platform re-adding a scrim behind the gesture bar. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
 </resources>

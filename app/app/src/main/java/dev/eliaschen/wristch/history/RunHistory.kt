@@ -87,6 +87,21 @@ object RunHistory {
         edit(id) { it.copy(steps = it.steps + step) }
     }
 
+    /**
+     * Names a run, once the model has written a name for it.
+     *
+     * Separate from [start] because the title is asked for over the network and the record
+     * has to exist the moment the button is pressed - waiting for a name before showing
+     * the run would be waiting for a round trip to admit that anything is happening. A
+     * blank title is dropped rather than stored, so a failed naming leaves the run listed
+     * under its goal instead of under nothing.
+     */
+    fun retitle(id: String, title: String) {
+        val cleaned = title.trim()
+        if (cleaned.isEmpty()) return
+        edit(id) { it.copy(title = cleaned) }
+    }
+
     fun finish(id: String, outcome: String) = close(id, RunStatus.DONE, outcome)
 
     fun fail(id: String, outcome: String) = close(id, RunStatus.FAILED, outcome)

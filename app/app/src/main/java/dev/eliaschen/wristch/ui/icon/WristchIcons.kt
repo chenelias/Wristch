@@ -97,6 +97,23 @@ object WristchIcons {
         }
     }
 
+    /**
+     * A four-pointed sparkle, for the agent itself.
+     *
+     * Concave sides rather than a plain diamond: the pinch is the whole difference between
+     * a star that reads as "something is thinking here" and a rotated square.
+     */
+    val Sparkle: ImageVector by lazy {
+        icon("Sparkle") {
+            moveTo(12f, 2f)
+            curveTo(13.2f, 7.2f, 16.8f, 10.8f, 22f, 12f)
+            curveTo(16.8f, 13.2f, 13.2f, 16.8f, 12f, 22f)
+            curveTo(10.8f, 16.8f, 7.2f, 13.2f, 2f, 12f)
+            curveTo(7.2f, 10.8f, 10.8f, 7.2f, 12f, 2f)
+            close()
+        }
+    }
+
     private fun icon(
         name: String,
         pathData: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit,
