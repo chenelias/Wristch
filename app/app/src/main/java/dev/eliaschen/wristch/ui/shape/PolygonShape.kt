@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.rectangle
 import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
 
@@ -19,7 +20,7 @@ import androidx.graphics.shapes.toPath
  * are built directly on `androidx.graphics.shapes` - the same library those shapes are
  * made from - and stay on stable dependencies.
  */
-class PolygonShape(private val polygon: RoundedPolygon) : Shape {
+class PolygonShape(val polygon: RoundedPolygon) : Shape {
 
     override fun createOutline(
         size: Size,
@@ -53,13 +54,22 @@ class PolygonShape(private val polygon: RoundedPolygon) : Shape {
  */
 object WristchShapes {
 
-    /** In flight - a many-pointed cookie, the busiest shape here. */
+    /**
+     * The app's shapes are stars whose lobes are shallow, and rounding is an absolute
+     * radius in the polygon's own units - not a fraction of the lobe. Ask for more
+     * rounding than an edge is long and the library rounds the lobes clean away, leaving a
+     * circle: with a lobe 0.18 deep, a rounding of 0.45 has nothing left to describe. Every
+     * value below is kept well under the depth of the feature it is rounding.
+     */
+    private const val LOBE_ROUNDING = 0.10f
+
+    /** In flight - a many-lobed cookie, the busiest shape here. */
     val Busy: Shape = PolygonShape(
         RoundedPolygon.star(
             numVerticesPerRadius = 12,
-            innerRadius = 0.85f,
-            rounding = CornerRounding(0.35f),
-            innerRounding = CornerRounding(0.35f),
+            innerRadius = 0.80f,
+            rounding = CornerRounding(LOBE_ROUNDING),
+            innerRounding = CornerRounding(LOBE_ROUNDING),
         ),
     )
 
@@ -69,18 +79,27 @@ object WristchShapes {
     )
 
     /**
-     * Something went wrong - flat-sided and sharper than [Settled], and it reads as a sign.
+     * Something went wrong - a cookie with half as many lobes as [Busy] and deeper dips,
+     * so the two do not read as the same shape at a glance.
      *
-     * An octagon rather than the obvious triangle: a triangle's inscribed circle is half
-     * its width, so any icon centred in one loses its corners to the edges. This keeps
-     * about 92% of the width usable, which is enough for a glyph to sit inside it.
+     * Not the obvious triangle: a triangle's inscribed circle is half its width, so an
+     * icon centred in one loses its corners to the edges. The dips here sit at 75% of the
+     * radius, which still leaves a 14dp glyph room inside a 26dp node.
      */
     val Alert: Shape = PolygonShape(
-        RoundedPolygon(numVertices = 8, rounding = CornerRounding(0.15f)),
+        RoundedPolygon.star(
+            numVerticesPerRadius = 6,
+            innerRadius = 0.75f,
+            rounding = CornerRounding(0.14f),
+            innerRounding = CornerRounding(0.14f),
+        ),
     )
 
-    /** Held - a wide, flat pill; nothing is moving. */
+    /**
+     * Held - a soft square. Flat sides and four corners, so it carries no relation to the
+     * cookies; nothing about it suggests motion.
+     */
     val Held: Shape = PolygonShape(
-        RoundedPolygon(numVertices = 8, rounding = CornerRounding(0.7f)),
+        RoundedPolygon.rectangle(width = 1f, height = 1f, rounding = CornerRounding(0.3f)),
     )
 }
