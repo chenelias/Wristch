@@ -211,10 +211,11 @@ internal fun ScreenHeader(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
+                    modifier = Modifier.size(18.dp),
                 )
             }
             Spacer(Modifier.weight(1f))

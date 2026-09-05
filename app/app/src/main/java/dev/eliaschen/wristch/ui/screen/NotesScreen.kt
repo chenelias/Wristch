@@ -44,8 +44,8 @@ fun NotesScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            IconButton(onClick = onBack) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to home")
+            FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to home", modifier = Modifier.size(18.dp))
             }
             Text(text = "Notes", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
             IconButton(onClick = {

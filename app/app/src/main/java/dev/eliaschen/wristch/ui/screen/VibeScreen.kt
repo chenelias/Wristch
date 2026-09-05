@@ -68,10 +68,11 @@ fun VibeScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back to home",
+                    modifier = Modifier.size(18.dp),
                 )
             }
             Text(

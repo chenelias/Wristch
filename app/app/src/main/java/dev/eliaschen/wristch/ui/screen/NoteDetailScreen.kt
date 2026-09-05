@@ -54,8 +54,8 @@ fun NoteDetailScreen(
 
     Column(modifier = modifier.fillMaxWidth().padding(24.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(18.dp))
             }
             Text(text = "Edit note", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
             IconButton(onClick = {

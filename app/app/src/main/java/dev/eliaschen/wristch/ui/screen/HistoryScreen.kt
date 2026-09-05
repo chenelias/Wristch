@@ -106,7 +106,7 @@ fun HistoryScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 24.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
