@@ -93,6 +93,19 @@ object RunHistory {
 
     fun find(id: String): RunRecord? = _runs.value.firstOrNull { it.id == id }
 
+    /** Forgets one run. A run still going is left alone - it has nowhere else to report to. */
+    fun delete(id: String) = update { runs ->
+        runs.filterNot { it.id == id && it.status != RunStatus.RUNNING }
+    }
+
+    /**
+     * Forgets every run that has finished.
+     *
+     * Anything still going survives: it is not history yet, and dropping its record would
+     * leave the agent writing steps into a run that no longer exists.
+     */
+    fun clearFinished() = update { runs -> runs.filter { it.status == RunStatus.RUNNING } }
+
     fun clear() = update { emptyList() }
 
     private fun close(id: String, status: RunStatus, outcome: String) = edit(id) {

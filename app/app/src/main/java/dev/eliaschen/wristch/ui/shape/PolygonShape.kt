@@ -12,6 +12,7 @@ import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.rectangle
 import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
+import kotlin.math.min
 
 /**
  * A rounded polygon as a Compose [Shape].
@@ -28,17 +29,23 @@ class PolygonShape(val polygon: RoundedPolygon) : Shape {
         density: Density,
     ): Outline {
         val path = polygon.toPath().asComposePath()
-        // The polygon is defined around its own centre in arbitrary units; this maps its
-        // bounding box onto the box Compose is asking about. Scale is applied before the
-        // translate, so the shape lands at the origin at the right size.
+        // The polygon is defined around its own centre in arbitrary units; this fits its
+        // bounding box inside the box Compose is asking about. One scale for both axes,
+        // not one each: a hexagon is wider than it is tall, and stretching it to fill a
+        // square is what turns the badge into a squashed hexagon rather than a hexagon.
+        // Whatever is left over becomes even margin, so the shape stays centred.
         val bounds = polygon.calculateBounds()
         val width = bounds[2] - bounds[0]
         val height = bounds[3] - bounds[1]
         if (width <= 0f || height <= 0f) return Outline.Rectangle(size.toRect())
 
+        val scale = min(size.width / width, size.height / height)
         path.transform(
             Matrix().apply {
-                scale(size.width / width, size.height / height)
+                // Read bottom-up: the polygon is moved onto the origin, scaled, then
+                // nudged by half of whatever the fit left over on each axis.
+                translate((size.width - width * scale) / 2f, (size.height - height * scale) / 2f)
+                scale(scale, scale)
                 translate(-bounds[0], -bounds[1])
             },
         )
@@ -63,8 +70,14 @@ object WristchShapes {
      */
     private const val LOBE_ROUNDING = 0.10f
 
-    /** In flight - a many-lobed cookie, the busiest shape here. */
-    val Busy: Shape = PolygonShape(
+    /**
+     * A twelve-lobed cookie: the app's one decorative shape.
+     *
+     * The lobes are shallow - an inner radius of 0.80, not the library's default 0.5 -
+     * because at badge size a deep star reads as a spiky asterisk rather than as a cookie,
+     * and the notches are rounded as well as the points so nothing on the outline is sharp.
+     */
+    val CookieShape: Shape = PolygonShape(
         RoundedPolygon.star(
             numVerticesPerRadius = 12,
             innerRadius = 0.80f,
@@ -73,33 +86,28 @@ object WristchShapes {
         ),
     )
 
+    /** In flight - the cookie, which is the restless shape in the state vocabulary. */
+    val Busy: Shape = CookieShape
+
     /** Settled - a softly rounded hexagon, near enough to a circle to read as calm. */
     val Settled: Shape = PolygonShape(
         RoundedPolygon(numVertices = 6, rounding = CornerRounding(0.5f)),
     )
 
     /**
-     * Something went wrong - a cookie with half as many lobes as [Busy] and deeper dips,
-     * so the two do not read as the same shape at a glance.
-     *
-     * Not the obvious triangle: a triangle's inscribed circle is half its width, so an
-     * icon centred in one loses its corners to the edges. The dips here sit at 75% of the
-     * radius, which still leaves a 14dp glyph room inside a 26dp node.
+     * Something went wrong - a rounded square. Flat sides and four corners set it apart
+     * from the cookies at a glance, and its inscribed circle is the full half-width, so
+     * the glyph inside it has more room than any other shape here gives.
      */
     val Alert: Shape = PolygonShape(
-        RoundedPolygon.star(
-            numVerticesPerRadius = 6,
-            innerRadius = 0.75f,
-            rounding = CornerRounding(0.14f),
-            innerRounding = CornerRounding(0.14f),
-        ),
+        RoundedPolygon.rectangle(width = 1f, height = 1f, rounding = CornerRounding(0.22f)),
     )
 
     /**
-     * Held - a soft square. Flat sides and four corners, so it carries no relation to the
-     * cookies; nothing about it suggests motion.
+     * Held - a squircle: the same four sides as [Alert] but rounded far enough to read as
+     * soft rather than sharp. Nothing about it suggests motion.
      */
     val Held: Shape = PolygonShape(
-        RoundedPolygon.rectangle(width = 1f, height = 1f, rounding = CornerRounding(0.3f)),
+        RoundedPolygon.rectangle(width = 1f, height = 1f, rounding = CornerRounding(0.42f)),
     )
 }

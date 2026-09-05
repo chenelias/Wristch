@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -30,11 +32,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -68,6 +74,7 @@ fun RunDetailScreen(
 ) {
     val runs by RunHistory.runs.collectAsState()
     val run = runs.firstOrNull { it.id == runId }
+    var confirmDelete by remember { mutableStateOf(false) }
 
     if (run == null) {
         Column(
@@ -82,6 +89,23 @@ fun RunDetailScreen(
         return
     }
 
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = "Delete this run?",
+            body = "\"${run.goal.ifBlank { "(no goal)" }}\" and its " +
+                "${run.steps.size} recorded actions will be removed. This cannot be undone.",
+            confirmLabel = "Delete",
+            onConfirm = {
+                confirmDelete = false
+                // Back first: the screen reads the run out of the store by id, and the
+                // moment it is gone this composition has nothing left to show.
+                onBack()
+                RunHistory.delete(runId)
+            },
+            onDismiss = { confirmDelete = false },
+        )
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -90,7 +114,28 @@ fun RunDetailScreen(
         // No arrangement spacing: the steps have to touch, or the rail running down the
         // timeline would break into pieces at every gap. Each item carries its own.
     ) {
-        item { Box(Modifier.padding(bottom = 12.dp)) { BackToHistory(onBack) } }
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BackToHistory(onBack)
+                Spacer(Modifier.weight(1f))
+                // A run still going has nowhere else to report to, so it cannot be
+                // deleted out from under itself.
+                if (run.status != RunStatus.RUNNING) {
+                    IconButton(onClick = { confirmDelete = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete this run",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+        }
         item { Box(Modifier.padding(bottom = 16.dp)) { Header(run) } }
         item {
             Text(

@@ -1,6 +1,8 @@
 package dev.eliaschen.wristch.ui.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +38,7 @@ import dev.eliaschen.wristch.BuildConfig
 import dev.eliaschen.wristch.accessibility.WristchAccessibilityService
 import dev.eliaschen.wristch.computer.ComputerUseAgent
 import dev.eliaschen.wristch.history.RunHistory
+import dev.eliaschen.wristch.ui.shape.WristchShapes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -71,9 +74,10 @@ fun AgentScreen(modifier: Modifier = Modifier) {
         Text("Agent", style = MaterialTheme.typography.headlineSmall)
 
         val blocker = when {
-            !isConnected -> "Accessibility service is off - turn it on in the Settings tab."
+            !isConnected -> "Accessibility service is off - turn it on in Android's accessibility settings."
             BuildConfig.GEMINI_API_KEY.isBlank() ->
                 "No API key. Add geminiApiKey=... to local.properties and rebuild."
+
             else -> null
         }
         if (blocker != null) {
@@ -148,12 +152,21 @@ fun AgentScreen(modifier: Modifier = Modifier) {
         }
 
         if (running) CircularProgressIndicator()
-
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        // The shape goes to background rather than to a clip after it:
+                        // clip only shapes what is drawn below it in the chain, and this
+                        // Box has no content of its own to clip.
+                        .background(MaterialTheme.colorScheme.primary, WristchShapes.CookieShape)
+                )
+            }
             items(steps) { step ->
                 Text(step, style = MaterialTheme.typography.bodySmall)
             }

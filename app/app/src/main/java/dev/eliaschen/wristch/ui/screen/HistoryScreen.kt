@@ -13,11 +13,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -71,6 +78,7 @@ private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM d
 @Composable
 fun HistoryScreen(
     onOpenRun: (String) -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val runs by RunHistory.runs.collectAsState()
@@ -90,11 +98,53 @@ fun HistoryScreen(
     // No Scaffold here: the nav graph already owns one, and nesting a second would
     // apply the window insets twice.
     Column(modifier = modifier.fillMaxSize()) {
-        Text(
-            text = "History",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp),
-        )
+        var confirmClear by remember { mutableStateOf(false) }
+        val finished = runs.count { it.status != RunStatus.RUNNING }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, top = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back to home",
+                )
+            }
+            Text(
+                text = "History",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f),
+            )
+            // Nothing to clear is not a disabled button, it is no button: the control
+            // appears only when there is finished history behind it.
+            if (finished > 0) {
+                IconButton(onClick = { confirmClear = true }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete all history")
+                }
+            }
+        }
+
+        if (confirmClear) {
+            ConfirmDialog(
+                title = "Delete all history?",
+                body = if (finished == runs.size) {
+                    "This removes all $finished runs. It cannot be undone."
+                } else {
+                    "This removes $finished finished runs and cannot be undone. " +
+                        "Anything still running is kept."
+                },
+                confirmLabel = "Delete all",
+                onConfirm = {
+                    RunHistory.clearFinished()
+                    confirmClear = false
+                },
+                onDismiss = { confirmClear = false },
+            )
+        }
 
         Row(
             modifier = Modifier
@@ -162,8 +212,9 @@ fun HistoryScreen(
     }
 }
 
+/** Shared with [HomeScreen], which shows the same row for the last few runs. */
 @Composable
-private fun RunRow(run: RunRecord, onClick: () -> Unit) {
+internal fun RunRow(run: RunRecord, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -253,6 +304,33 @@ private fun summaryOf(run: RunRecord): String {
  * took, and a third unit only makes that harder to read at a glance. A run of under a
  * second still reads as "1s" rather than "0s", because zero looks like missing data.
  */
+/**
+ * The one confirmation this app asks for.
+ *
+ * Deleting history is the only destructive thing either screen can do, and it is
+ * unrecoverable - the store keeps no undo and the file is rewritten immediately.
+ */
+@Composable
+internal fun ConfirmDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(body) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(confirmLabel, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
 internal fun formatDuration(millis: Long): String {
     val totalSeconds = ((millis + 500L) / 1000L).coerceAtLeast(1L)
     val hours = totalSeconds / 3600
@@ -270,9 +348,10 @@ internal fun formatDuration(millis: Long): String {
 
 internal fun atZone(millis: Long) = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
 
-private fun dayOf(run: RunRecord): LocalDate = atZone(run.startedAt).toLocalDate()
+internal fun dayOf(run: RunRecord): LocalDate = atZone(run.startedAt).toLocalDate()
 
-private fun dayLabel(day: LocalDate): String = when (day) {
+/** Shared with [HomeScreen], which heads its list with the day the runs are from. */
+internal fun dayLabel(day: LocalDate): String = when (day) {
     LocalDate.now() -> "Today"
     LocalDate.now().minusDays(1) -> "Yesterday"
     else -> DATE_FORMAT.format(day)
