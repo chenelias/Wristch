@@ -66,7 +66,7 @@ fun NotesScreen(
             return@Column
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = androidx.compose.ui.unit.PaddingValues(top = 12.dp)) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 12.dp)) {
             items(notes, key = { it.id }) { note: Note ->
                 Card(modifier = Modifier
                     .fillMaxWidth()
