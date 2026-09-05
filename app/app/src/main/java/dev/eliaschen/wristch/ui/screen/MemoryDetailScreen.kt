@@ -73,12 +73,12 @@ fun MemoryDetailScreen(
     // The keyboard takes the bottom of the screen, so the screen ends above it and the
     // field being written in is scrolled into what is left.
     Column(modifier = modifier.fillMaxSize().statusBarsPadding().imePadding()) {
-        ScreenHeader(title = "Memory", onBack = onBack) {
+        ScreenHeader(title = "記憶", onBack = onBack) {
             IconButton(onClick = {
                 MemoryStore.delete(memoryId)
                 onBack()
             }) {
-                Icon(Icons.Default.Delete, contentDescription = "Forget this")
+                Icon(Icons.Default.Delete, contentDescription = "忘掉這件事")
             }
         }
 
@@ -110,7 +110,7 @@ fun MemoryDetailScreen(
                         text = value
                         MemoryStore.edit(memoryId, value)
                     },
-                    label = { Text("Remembered") },
+                    label = { Text("記住的內容") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 6,
                 )
@@ -118,13 +118,13 @@ fun MemoryDetailScreen(
 
             item(key = "scope-header") {
                 Text(
-                    text = "Scope",
+                    text = "適用範圍",
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
             item(key = "scope-hint") {
                 Text(
-                    text = "Which vibe sees this - the rest never do.",
+                    text = "只有選中的氛圍看得到這件事，其他氛圍不會知道。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -132,14 +132,14 @@ fun MemoryDetailScreen(
 
             item(key = "scope-all") {
                 ScopeRow(
-                    label = "All vibes",
+                    label = "所有氛圍",
                     selected = memory.vibeId == null,
                     onClick = { MemoryStore.scope(memoryId, null) },
                 )
             }
             items(vibes, key = { it.id }) { vibe ->
                 ScopeRow(
-                    label = vibe.name.ifBlank { "(unnamed)" },
+                    label = vibe.name.ifBlank { "(未命名)" },
                     selected = memory.vibeId == vibe.id,
                     onClick = { MemoryStore.scope(memoryId, vibe.id) },
                 )
@@ -151,8 +151,8 @@ fun MemoryDetailScreen(
 /** Where this came from, in one line: who wrote it and roughly when. */
 private fun origin(author: MemoryAuthor, createdAt: Long): String {
     val who = when (author) {
-        MemoryAuthor.USER -> "You wrote this"
-        MemoryAuthor.AGENT -> "The agent learned this"
+        MemoryAuthor.USER -> "你寫的"
+        MemoryAuthor.AGENT -> "Agent 執行任務時學到的"
     }
     if (createdAt <= 0L) return who
     val when_ = DateUtils.getRelativeTimeSpanString(
@@ -160,7 +160,7 @@ private fun origin(author: MemoryAuthor, createdAt: Long): String {
         System.currentTimeMillis(),
         DateUtils.MINUTE_IN_MILLIS,
     )
-    return "$who $when_"
+    return "$who，$when_"
 }
 
 @Composable

@@ -122,7 +122,7 @@ fun HomeScreen(
                     .align(Alignment.CenterStart)
                     .offset(x = (-12).dp),
             ) {
-                Icon(imageVector = WristchIcons.Memory, contentDescription = "Memory")
+                Icon(imageVector = WristchIcons.Memory, contentDescription = "記憶")
             }
             Text(text = "Wristch", style = MaterialTheme.typography.headlineSmall)
             // Mirrors the Memory button's offset on the other side, so both icons sit on
@@ -133,14 +133,14 @@ fun HomeScreen(
                     .align(Alignment.CenterEnd)
                     .offset(x = 12.dp),
             ) {
-                Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
+                Icon(imageVector = Icons.Default.Settings, contentDescription = "設定")
             }
         }
 
         SectionHeader(
-            title = "Vibes",
+            title = "氛圍",
             icon = Icons.Default.Edit,
-            iconDescription = "Edit vibes",
+            iconDescription = "編輯氛圍",
             onIcon = onOpenVibes,
         )
 
@@ -164,15 +164,15 @@ fun HomeScreen(
         }
 
         SectionHeader(
-            title = day?.let { dayLabel(it) } ?: "Today",
+            title = day?.let { dayLabel(it) } ?: "今天",
             icon = Icons.AutoMirrored.Filled.ArrowForward,
-            iconDescription = "See all history",
+            iconDescription = "查看所有紀錄",
             onIcon = onOpenHistory,
         )
 
         if (recent.isEmpty()) {
             Text(
-                text = "No runs yet. Anything you start from the button below shows up here.",
+                text = "還沒有任何執行紀錄。從下方按鈕開始的任務都會顯示在這裡。",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
@@ -247,7 +247,7 @@ private fun VibeCard(vibe: Vibe, isDefault: Boolean, onClick: () -> Unit) {
                 if (isDefault) DefaultBadge(Modifier.align(Alignment.BottomEnd))
             }
             Text(
-                text = vibe.name.ifBlank { "(unnamed)" },
+                text = vibe.name.ifBlank { "(未命名)" },
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -255,7 +255,7 @@ private fun VibeCard(vibe: Vibe, isDefault: Boolean, onClick: () -> Unit) {
             )
             Text(
                 text = when {
-                    !vibe.enabled -> "Off"
+                    !vibe.enabled -> "已關閉"
                     vibe.subtitle.isNotBlank() -> vibe.subtitle
                     else -> vibe.confirmation.label
                 },
@@ -286,7 +286,7 @@ private fun DefaultBadge(modifier: Modifier = Modifier) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = Icons.Default.Check,
-                contentDescription = "Default vibe",
+                contentDescription = "預設氛圍",
                 tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(11.dp),
             )
@@ -314,12 +314,12 @@ private fun AddVibeCard(onClick: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add a vibe",
+                contentDescription = "新增氛圍",
                 modifier = Modifier.size(28.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "New vibe",
+                text = "新增氛圍",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),

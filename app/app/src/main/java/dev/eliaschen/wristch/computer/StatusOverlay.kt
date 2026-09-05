@@ -480,7 +480,7 @@ private fun NoteBox(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = if (asked) "Wristch needs to know" else "Add to this task",
+                    text = if (asked) "Agent 需要你告訴它" else "補充給這個任務",
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (question != null) {
@@ -488,7 +488,7 @@ private fun NoteBox(
                 }
                 if (doing.isNotBlank() && !asked) {
                     Text(
-                        text = "Held at: $doing",
+                        text = "目前停在：$doing",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -504,9 +504,9 @@ private fun NoteBox(
                         if (text.isEmpty()) {
                             Text(
                                 text = if (asked) {
-                                    "Type the answer"
+                                    "在這裡輸入答案"
                                 } else {
-                                    "The bottom one is her work number"
+                                    "例如：下面那個才是她的公司電話"
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -530,10 +530,9 @@ private fun NoteBox(
 
                 Text(
                     text = if (asked) {
-                        "The run is waiting on this. Closing the box ends it."
+                        "任務正在等這個答案。關掉這個視窗就會結束任務。"
                     } else {
-                        "The run is held while this is open, and picks this up on its " +
-                            "next step."
+                        "這個視窗開著時任務會暫停，你寫的內容會在下一步被讀進去。"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -544,10 +543,10 @@ private fun NoteBox(
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 ) {
                     TextButton(onClick = onCancel) {
-                        Text(if (asked) "I cannot say" else "Cancel")
+                        Text(if (asked) "我答不出來" else "取消")
                     }
                     Button(onClick = { onSend(text) }, enabled = text.isNotBlank()) {
-                        Text(if (asked) "Answer" else "Add")
+                        Text(if (asked) "回答" else "加上去")
                     }
                 }
             }
@@ -588,7 +587,7 @@ private fun RunningStrip(
     ) {
         StateBadge(paused)
         Text(
-            text = if (paused) "Paused - ${status.text}" else status.text,
+            text = if (paused) "已暫停 - ${status.text}" else status.text,
             style = MaterialTheme.typography.bodySmall,
             maxLines = if (expanded) Int.MAX_VALUE else 2,
             overflow = TextOverflow.Ellipsis,
@@ -602,7 +601,7 @@ private fun RunningStrip(
             onClick = onCompose,
             modifier = Modifier.size(CONTROL_SIZE),
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add to this task")
+            Icon(Icons.Default.Add, contentDescription = "補充給這個任務")
         }
         if (paused) {
             // Two ways out of a hold, and they are not equals: carrying on is the
@@ -611,7 +610,7 @@ private fun RunningStrip(
                 onClick = control::resume,
                 modifier = Modifier.size(CONTROL_SIZE),
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "Resume")
+                Icon(Icons.Default.PlayArrow, contentDescription = "繼續")
             }
             FilledTonalIconButton(
                 onClick = control::stop,
@@ -621,14 +620,14 @@ private fun RunningStrip(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 ),
             ) {
-                Icon(WristchIcons.Stop, contentDescription = "Stop")
+                Icon(WristchIcons.Stop, contentDescription = "停止")
             }
         } else {
             FilledTonalIconButton(
                 onClick = control::pause,
                 modifier = Modifier.size(CONTROL_SIZE),
             ) {
-                Icon(WristchIcons.Pause, contentDescription = "Pause")
+                Icon(WristchIcons.Pause, contentDescription = "暫停")
             }
         }
     }

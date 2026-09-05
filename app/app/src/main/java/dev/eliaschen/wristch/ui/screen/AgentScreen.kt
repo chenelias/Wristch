@@ -90,6 +90,7 @@ fun AgentScreen(
     onRunStarted: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialGoal: String? = null,
+    initialVibeId: String? = null,
 ) {
     val isConnected by WristchAccessibilityService.isConnected.collectAsState()
     val service = WristchAccessibilityService.current()
@@ -108,6 +109,17 @@ fun AgentScreen(
     // only follows the default while the user has not picked for themselves.
     var chosenVibeId by remember { mutableStateOf<String?>(null) }
     var picked by remember { mutableStateOf(false) }
+    // A run being sent again arrives naming the vibe it ran under the first time, and that
+    // counts as a choice already made: the same sentence under a different vibe is a
+    // different instruction, and the default is not necessarily the one it was asked with.
+    LaunchedEffect(initialVibeId, vibesLoaded) {
+        if (initialVibeId != null && vibesLoaded && !picked) {
+            if (VibeStore.vibes.value.any { it.id == initialVibeId && it.enabled }) {
+                chosenVibeId = initialVibeId
+                picked = true
+            }
+        }
+    }
     LaunchedEffect(defaultId, vibesLoaded) {
         if (!picked && vibesLoaded) chosenVibeId = defaultId
     }
@@ -159,11 +171,10 @@ fun AgentScreen(
 
     val blocker = when {
         !isConnected ->
-            "Accessibility is off. Wristch cannot see or touch the screen until it is on " +
-                    "in Android's accessibility settings."
+            "無障礙服務尚未開啟。在 Android 的無障礙設定中開啟之前，Wristch 無法讀取或操作螢幕。"
 
         BuildConfig.GEMINI_API_KEY.isBlank() ->
-            "No API key. Add geminiApiKey=... to local.properties and rebuild."
+            "沒有 API 金鑰。請在 local.properties 加上 geminiApiKey=... 並重新建置。"
 
         else -> null
     }
@@ -269,8 +280,8 @@ fun AgentScreen(
             ) {
                 item(key = "no-vibe") {
                     VibeCard(
-                        name = "Plain",
-                        subtitle = "Just the sentence - no vibe",
+                        name = "純文字",
+                        subtitle = "只送這句話 - 不套用氛圍",
                         selected = chosenVibeId == null,
                         onClick = {
                             picked = true
@@ -280,7 +291,7 @@ fun AgentScreen(
                 }
                 items(offered, key = { it.id }) { candidate ->
                     VibeCard(
-                        name = candidate.name.ifBlank { "(unnamed)" },
+                        name = candidate.name.ifBlank { "(未命名)" },
                         subtitle = candidate.subtitle,
                         selected = candidate.id == chosenVibeId,
                         onClick = {
@@ -333,7 +344,7 @@ internal fun ScreenHeader(
             FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = "返回",
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -412,7 +423,7 @@ private fun VibeCard(name: String, subtitle: String, selected: Boolean, onClick:
             if (selected) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Selected",
+                    contentDescription = "已選取",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .padding(start = 12.dp)
@@ -458,7 +469,7 @@ private fun ComposerBar(
             ) {
                 if (goal.isEmpty()) {
                     Text(
-                        text = "Talk to the agent",
+                        text = "跟 Agent 說話",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -486,7 +497,7 @@ private fun ComposerBar(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = if (typing) Icons.AutoMirrored.Filled.Send else WristchIcons.Mic,
-                    contentDescription = if (typing) "Send" else "Say it",
+                    contentDescription = if (typing) "傳送" else "說出來",
                     tint = MaterialTheme.colorScheme.onPrimary,
                 )
             }
@@ -526,13 +537,13 @@ private fun VoiceOverlay(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onCancel) {
-                    Icon(Icons.Default.Close, contentDescription = "Cancel")
+                    Icon(Icons.Default.Close, contentDescription = "取消")
                 }
                 Text(
                     text = when {
-                        !available -> "Not available"
-                        state == VoiceUiState.Fixing -> "Sending"
-                        else -> "Listening"
+                        !available -> "無法使用"
+                        state == VoiceUiState.Fixing -> "傳送中"
+                        else -> "聆聽中"
                     },
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
@@ -582,10 +593,10 @@ private fun VoiceOverlay(
                 Spacer(Modifier.size(28.dp))
                 Text(
                     text = when {
-                        !available -> "This device has no speech recognizer installed."
+                        !available -> "這台裝置沒有安裝語音辨識引擎。"
                         liveText.isNotBlank() -> liveText
-                        state == VoiceUiState.Fixing -> "Cleaning that up"
-                        else -> "Say what the agent should do"
+                        state == VoiceUiState.Fixing -> "正在整理內容"
+                        else -> "說出你要 Agent 做的事"
                     },
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center,
@@ -600,7 +611,7 @@ private fun VoiceOverlay(
                     onClick = onCancel,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Cancel")
+                    Text("取消")
                 }
                 Button(
                     onClick = onDone,
@@ -613,7 +624,7 @@ private fun VoiceOverlay(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.size(8.dp))
-                    Text("Done")
+                    Text("完成")
                 }
             }
         }

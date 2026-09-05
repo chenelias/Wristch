@@ -60,7 +60,7 @@ fun ScreenHeader(
         FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back to home",
+                contentDescription = "返回上一頁",
                 modifier = Modifier.size(18.dp),
             )
         }

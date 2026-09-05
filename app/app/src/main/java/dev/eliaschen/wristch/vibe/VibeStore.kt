@@ -75,7 +75,7 @@ object VibeStore {
                 null
             } ?: VibeBook(vibes = starterVibes()).let { it.copy(defaultId = it.vibes.first().id) }
 
-            _vibes.value = book.vibes
+            _vibes.value = book.vibes.map(::translated)
             _defaultId.value = book.defaultId?.takeIf { id -> book.vibes.any { it.id == id } }
             _loaded.value = true
             Log.i(TAG, "loaded ${book.vibes.size} vibes, defaultId=${_defaultId.value}, enabled=${book.vibes.count { it.enabled }}")
@@ -87,7 +87,7 @@ object VibeStore {
     fun create(): String {
         val vibe = Vibe(
             id = UUID.randomUUID().toString(),
-            name = "New vibe",
+            name = "新氛圍",
             accent = _vibes.value.size % ACCENT_COUNT,
             createdAt = System.currentTimeMillis(),
         )
@@ -152,19 +152,92 @@ object VibeStore {
         }
     }
 
+    /**
+     * An untouched English starter vibe, rewritten in Chinese.
+     *
+     * The app shipped its starter set in English, so a phone that has been running since
+     * then still has "School" and "Family" in a file the new starter set never gets to
+     * seed. Renaming them on load is what makes the change visible on an existing install
+     * rather than only on a fresh one.
+     *
+     * Matched on the id being absent and every field still holding the exact English text
+     * it shipped with: the moment someone has edited a vibe it is theirs, and the wording
+     * they chose outranks the wording we would have picked. Each field is checked on its
+     * own, so an edited instruction keeps its name translated and vice versa.
+     */
+    private fun translated(vibe: Vibe): Vibe {
+        val starter = LEGACY_STARTERS[vibe.name] ?: return vibe
+        return vibe.copy(
+            name = starter.name,
+            subtitle = if (vibe.subtitle == starter.englishSubtitle) starter.subtitle else vibe.subtitle,
+            instruction =
+                if (vibe.instruction == starter.englishInstruction) starter.instruction
+                else vibe.instruction,
+        )
+    }
+
+    /** The English text a starter vibe shipped with, beside what it should now read. */
+    private class Starter(
+        val name: String,
+        val englishSubtitle: String,
+        val subtitle: String,
+        val englishInstruction: String,
+        val instruction: String,
+    )
+
+    private val LEGACY_STARTERS: Map<String, Starter> = mapOf(
+        "School" to Starter(
+            name = "學校",
+            englishSubtitle = "Teachers, classmates, clubs",
+            subtitle = "老師、同學、社團",
+            englishInstruction = "Write politely and get to the point. Address teachers by " +
+                "title and surname, propose concrete times rather than asking when " +
+                "they are free, and keep messages to a couple of sentences.",
+            instruction = SCHOOL_INSTRUCTION,
+        ),
+        "Family" to Starter(
+            name = "家人",
+            englishSubtitle = "Home, meals, errands",
+            subtitle = "家裡、吃飯、跑腿",
+            englishInstruction = "Talk the way you would at the dinner table - short, warm, " +
+                "no formalities. When a message is about meeting somewhere, include " +
+                "where it is and a map link.",
+            instruction = FAMILY_INSTRUCTION,
+        ),
+        "Relationship" to Starter(
+            name = "感情",
+            englishSubtitle = "Just the two of you",
+            subtitle = "只有你們兩個",
+            englishInstruction = "Keep it personal and unhurried. Never make plans on their " +
+                "behalf without saying so, and check the calendar before suggesting a day.",
+            instruction = RELATIONSHIP_INSTRUCTION,
+        ),
+    )
+
     /** How many accents the UI palette has; kept here so [create] can cycle through them. */
     internal const val ACCENT_COUNT = 6
+
+    private const val SCHOOL_INSTRUCTION =
+        "語氣禮貌、直接說重點。稱呼老師要用姓氏加職稱；" +
+            "要約時間就直接提出具體時段，不要只問對方什麼時候有空；" +
+            "訊息控制在兩三句以內。"
+
+    private const val FAMILY_INSTRUCTION =
+        "就像在餐桌上說話那樣：短、親切、不用客套。" +
+            "如果訊息是在約碰面，記得寫上地點和一個地圖連結。"
+
+    private const val RELATIONSHIP_INSTRUCTION =
+        "語氣親密、不趕時間。不要替對方擅自決定行程；" +
+            "要提議日期之前，先看過行事曆。"
 
     private fun starterVibes(): List<Vibe> {
         val now = System.currentTimeMillis()
         return listOf(
             Vibe(
                 id = UUID.randomUUID().toString(),
-                name = "School",
-                subtitle = "Teachers, classmates, clubs",
-                instruction = "Write politely and get to the point. Address teachers by " +
-                    "title and surname, propose concrete times rather than asking when " +
-                    "they are free, and keep messages to a couple of sentences.",
+                name = "學校",
+                subtitle = "老師、同學、社團",
+                instruction = SCHOOL_INSTRUCTION,
                 sources = setOf(VibeSource.CALENDAR, VibeSource.MESSAGES),
                 confirmation = VibeConfirmation.ALWAYS,
                 accent = 0,
@@ -172,11 +245,9 @@ object VibeStore {
             ),
             Vibe(
                 id = UUID.randomUUID().toString(),
-                name = "Family",
-                subtitle = "Home, meals, errands",
-                instruction = "Talk the way you would at the dinner table - short, warm, " +
-                    "no formalities. When a message is about meeting somewhere, include " +
-                    "where it is and a map link.",
+                name = "家人",
+                subtitle = "家裡、吃飯、跑腿",
+                instruction = FAMILY_INSTRUCTION,
                 sources = setOf(VibeSource.LOCATION, VibeSource.CONTACTS),
                 confirmation = VibeConfirmation.RISKY_ONLY,
                 accent = 1,
@@ -184,10 +255,9 @@ object VibeStore {
             ),
             Vibe(
                 id = UUID.randomUUID().toString(),
-                name = "Relationship",
-                subtitle = "Just the two of you",
-                instruction = "Keep it personal and unhurried. Never make plans on their " +
-                    "behalf without saying so, and check the calendar before suggesting a day.",
+                name = "感情",
+                subtitle = "只有你們兩個",
+                instruction = RELATIONSHIP_INSTRUCTION,
                 sources = setOf(VibeSource.CALENDAR, VibeSource.MESSAGES, VibeSource.MEMORY),
                 confirmation = VibeConfirmation.ALWAYS,
                 accent = 2,

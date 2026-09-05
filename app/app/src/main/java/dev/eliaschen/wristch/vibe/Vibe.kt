@@ -9,12 +9,23 @@ import kotlinx.serialization.Serializable
  * "tell my brother dinner is ready" should quietly carry a map link, while the same
  * sentence sent to a teacher should not carry where you are standing.
  */
-enum class VibeSource(val label: String, val explanation: String) {
-    LOCATION("Location", "Where the phone is, and a Maps link for it"),
-    CALENDAR("Calendar", "Events around now, for time and place"),
-    MESSAGES("Message history", "Recent threads with the people this vibe is about"),
-    CONTACTS("Contacts", "Who the names in a task refer to"),
-    MEMORY("Memory", "What you and the agent have remembered, on both sides"),
+enum class VibeSource(
+    val label: String,
+    val explanation: String,
+    /**
+     * The same source as the model should hear it, in [Vibe.prompt].
+     *
+     * Separate from [label] because the two are read by different audiences: the label is
+     * a person scanning a settings screen, this is one term in a sentence the model acts
+     * on. Translating the screen should not quietly reword the prompt.
+     */
+    val term: String,
+) {
+    LOCATION("位置", "手機在哪裡，以及一個地圖連結", "location"),
+    CALENDAR("行事曆", "現在前後的行程，含時間與地點", "calendar"),
+    MESSAGES("訊息紀錄", "與這個氛圍相關的人的最近對話", "message history"),
+    CONTACTS("聯絡人", "任務裡提到的名字是誰", "contacts"),
+    MEMORY("記憶", "你和 Agent 雙方記下來的事", "memory"),
     ;
 }
 
@@ -26,9 +37,9 @@ enum class VibeSource(val label: String, val explanation: String) {
  * because that difference is exactly what a vibe is for.
  */
 enum class VibeConfirmation(val label: String, val explanation: String) {
-    ALWAYS("Ask me every time", "Safest"),
-    RISKY_ONLY("Only risky actions", "Calling, paying, deleting"),
-    NEVER("Fully automatic", "Never asks"),
+    ALWAYS("每次都問我", "最安全"),
+    RISKY_ONLY("只問風險動作", "打電話、付款、刪除"),
+    NEVER("完全自動", "從不詢問"),
     ;
 }
 
@@ -57,7 +68,7 @@ data class Vibe(
 ) {
 
     /** The initial the avatar shows; blank names still have to draw something. */
-    val initial: String get() = name.trim().take(1).uppercase().ifBlank { "?" }
+    val initial: String get() = name.trim().take(1).uppercase().ifBlank { "？" }
 
     /**
      * This vibe as the model should hear it, or null if there is nothing to say.
@@ -87,7 +98,7 @@ data class Vibe(
                 )
             }
             if (sources.isNotEmpty()) {
-                add("You may pull in: " + sources.joinToString { it.label.lowercase() } + ".")
+                add("You may pull in: " + sources.joinToString { it.term } + ".")
             }
         }
         return if (instruction.isBlank() && notes.isBlank() && sources.isEmpty()) null

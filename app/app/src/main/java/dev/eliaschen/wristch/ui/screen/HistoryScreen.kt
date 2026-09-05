@@ -54,9 +54,9 @@ import java.time.format.DateTimeFormatter
  * pinned above the list for as long as it lasts.
  */
 private enum class HistoryFilter(val label: String) {
-    ALL("All"),
-    DONE("Done"),
-    FAILED("Failed"),
+    ALL("全部"),
+    DONE("已完成"),
+    FAILED("失敗"),
     ;
 
     fun accepts(run: RunRecord): Boolean = when (this) {
@@ -67,7 +67,7 @@ private enum class HistoryFilter(val label: String) {
 }
 
 private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM d")
+private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("M 月 d 日")
 
 /**
  * Every run the agent has done, newest first and grouped by the day it started, with
@@ -99,26 +99,26 @@ fun HistoryScreen(
         var confirmClear by remember { mutableStateOf(false) }
         val finished = runs.count { it.status != RunStatus.RUNNING }
 
-        ScreenHeader(title = "History", onBack = onBack) {
+        ScreenHeader(title = "紀錄", onBack = onBack) {
             // Nothing to clear is not a disabled button, it is no button: the control
             // appears only when there is finished history behind it.
             if (finished > 0) {
                 IconButton(onClick = { confirmClear = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete all history")
+                    Icon(Icons.Default.Delete, contentDescription = "刪除全部紀錄")
                 }
             }
         }
 
         if (confirmClear) {
             ConfirmDialog(
-                title = "Delete all history?",
+                title = "刪除全部紀錄？",
                 body = if (finished == runs.size) {
-                    "This removes all $finished runs. It cannot be undone."
+                    "這會移除全部 $finished 筆紀錄，且無法復原。"
                 } else {
-                    "This removes $finished finished runs and cannot be undone. " +
-                        "Anything still running is kept."
+                    "這會移除 $finished 筆已完成的紀錄，且無法復原。" +
+                        "正在執行中的任務會保留。"
                 },
-                confirmLabel = "Delete all",
+                confirmLabel = "全部刪除",
                 onConfirm = {
                     RunHistory.clearFinished()
                     confirmClear = false
@@ -145,9 +145,9 @@ fun HistoryScreen(
         if (visible.isEmpty()) {
             Text(
                 text = if (runs.isEmpty()) {
-                    "No runs yet. Anything you start from the agent button shows up here."
+                    "還沒有任何執行紀錄。從 Agent 按鈕開始的任務都會顯示在這裡。"
                 } else {
-                    "No ${filter.label.lowercase()} runs."
+                    "沒有${filter.label}的紀錄。"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -206,7 +206,7 @@ internal fun RunRow(run: RunRecord, onClick: () -> Unit) {
 //            Avatar(run)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = run.label.ifBlank { "(no goal)" },
+                    text = run.label.ifBlank { "(未填寫任務)" },
                     style = MaterialTheme.typography.titleSmall,
                     // Two lines, because a name that says which message to whom does not
                     // fit on one - and the half that gets cut is the half that identifies
@@ -264,15 +264,14 @@ private fun statusColor(status: RunStatus): Color = when (status) {
 
 /** The one line under the goal: what happened, and how much work it took. */
 private fun summaryOf(run: RunRecord): String {
-    val steps = run.steps.size
-    val stepText = if (steps == 1) "1 step" else "$steps steps"
+    val stepText = "${run.steps.size} 個步驟"
     return when (run.status) {
-        RunStatus.RUNNING -> "Running - $stepText so far"
+        RunStatus.RUNNING -> "執行中 - 目前 $stepText"
         RunStatus.DONE -> {
             val took = run.durationMs?.let { " - ${formatDuration(it)}" } ?: ""
-            "Done - $stepText$took"
+            "已完成 - $stepText$took"
         }
-        RunStatus.FAILED -> "Failed - ${run.outcome.ifBlank { "no outcome reported" }}"
+        RunStatus.FAILED -> "失敗 - ${run.outcome.ifBlank { "未回報結果" }}"
     }
 }
 
@@ -306,7 +305,7 @@ internal fun ConfirmDialog(
                 Text(confirmLabel, color = MaterialTheme.colorScheme.error)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
 }
 
@@ -317,11 +316,11 @@ internal fun formatDuration(millis: Long): String {
     val seconds = totalSeconds % 60
 
     return when {
-        hours > 0 && minutes > 0 -> "${hours}h ${minutes}min"
-        hours > 0 -> "${hours}h"
-        minutes > 0 && seconds > 0 -> "${minutes}min ${seconds}s"
-        minutes > 0 -> "${minutes}min"
-        else -> "${seconds}s"
+        hours > 0 && minutes > 0 -> "${hours} 小時 ${minutes} 分"
+        hours > 0 -> "${hours} 小時"
+        minutes > 0 && seconds > 0 -> "${minutes} 分 ${seconds} 秒"
+        minutes > 0 -> "${minutes} 分"
+        else -> "${seconds} 秒"
     }
 }
 
@@ -331,7 +330,7 @@ internal fun dayOf(run: RunRecord): LocalDate = atZone(run.startedAt).toLocalDat
 
 /** Shared with [HomeScreen], which heads its list with the day the runs are from. */
 internal fun dayLabel(day: LocalDate): String = when (day) {
-    LocalDate.now() -> "Today"
-    LocalDate.now().minusDays(1) -> "Yesterday"
+    LocalDate.now() -> "今天"
+    LocalDate.now().minusDays(1) -> "昨天"
     else -> DATE_FORMAT.format(day)
 }

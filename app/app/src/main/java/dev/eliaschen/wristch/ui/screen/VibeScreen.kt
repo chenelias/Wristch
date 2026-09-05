@@ -59,15 +59,15 @@ fun VibeScreen(
     // No Scaffold here: the nav graph already owns one, and nesting a second would apply
     // the window insets twice.
     Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
-        ScreenHeader(title = "Vibe", onBack = onBack) {
+        ScreenHeader(title = "氛圍", onBack = onBack) {
             IconButton(onClick = { onOpenVibe(VibeStore.create()) }) {
-                Icon(Icons.Default.Add, contentDescription = "Add a vibe")
+                Icon(Icons.Default.Add, contentDescription = "新增氛圍")
             }
         }
 
         Text(
-            text = "A vibe is who you are talking to: how a message should sound, what " +
-                "the agent already knows, and how much it may do on its own.",
+            text = "一個氛圍就是一種說話方式：訊息要用什麼口氣、Agent 事先知道哪些事，" +
+                "以及它能自己做主到什麼程度。跟家人和跟老師說話，自然不是同一種。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 8.dp),
@@ -81,16 +81,15 @@ fun VibeScreen(
             if (vibes.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        text = "No vibes yet. Add one for a person or a part of your life " +
-                            "- school, home, work - and tasks sent under it are written " +
-                            "that way.",
+                        text = "還沒有任何氛圍。先為一個人或生活中的一塊新增一個" +
+                            "（例如學校、家裡、工作），之後選用它的任務，都會照這個方式來寫。",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
                 return@LazyColumn
             }
 
-            item(key = "vibes-header") { SectionLabel("Your vibes") }
+            item(key = "vibes-header") { SectionLabel("你的氛圍") }
 
             items(vibes, key = { it.id }) { vibe ->
                 VibeRow(
@@ -102,10 +101,9 @@ fun VibeScreen(
 
             item(key = "default-header") {
                 Column {
-                    SectionLabel("Default vibe")
+                    SectionLabel("預設氛圍")
                     Text(
-                        text = "Used when a task arrives without one - the phone widget, " +
-                            "or a watch gesture with no vibe of its own.",
+                        text = "任務沒有指定氛圍時，就用這一個。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp),
@@ -116,7 +114,7 @@ fun VibeScreen(
             if (selectable.isEmpty()) {
                 item(key = "default-none") {
                     Text(
-                        text = "Every vibe is switched off, so tasks run with no vibe at all.",
+                        text = "所有氛圍都關起來了，任務會在沒有氛圍的情況下執行。",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -164,7 +162,7 @@ private fun VibeRow(
             VibeAvatar(vibe)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = vibe.name.ifBlank { "(unnamed)" },
+                    text = vibe.name.ifBlank { "(未命名)" },
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -197,7 +195,7 @@ private fun DefaultRow(vibe: Vibe, selected: Boolean, onSelect: () -> Unit) {
     ) {
         RadioButton(selected = selected, onClick = onSelect)
         Column(modifier = Modifier.weight(1f)) {
-            Text(vibe.name.ifBlank { "(unnamed)" }, style = MaterialTheme.typography.bodyLarge)
+            Text(vibe.name.ifBlank { "(未命名)" }, style = MaterialTheme.typography.bodyLarge)
             if (vibe.subtitle.isNotBlank()) {
                 Text(
                     text = vibe.subtitle,
@@ -238,10 +236,10 @@ internal fun VibeAvatar(vibe: Vibe, size: androidx.compose.ui.unit.Dp = 40.dp) {
 
 /** The one line under the name: what this vibe carries, and how freely it acts. */
 private fun summaryOf(vibe: Vibe): String {
-    if (!vibe.enabled) return "Off - not offered to the watch or the widget"
+    if (!vibe.enabled) return "已關閉 - 不會被任務選用"
     val sources = when (vibe.sources.size) {
-        0 -> "nothing extra"
-        else -> vibe.sources.joinToString { it.label.lowercase() }
+        0 -> "沒有額外資料"
+        else -> vibe.sources.joinToString("、") { it.label }
     }
-    return "${vibe.confirmation.label} - carries $sources"
+    return "${vibe.confirmation.label} - 會帶上$sources"
 }

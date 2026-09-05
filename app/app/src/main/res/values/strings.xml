@@ -2,5 +2,5 @@
     <string name="app_name">Wristch</string>
 
     <string name="accessibility_service_label">Wristch</string>
-    <string name="accessibility_service_description">Lets Wristch read what is on screen and tap, type and scroll on your behalf, so it can carry out the tasks you ask for by voice, text or watch gesture.</string>
+    <string name="accessibility_service_description">讓 Wristch 讀取螢幕上的內容，並代替你點擊、輸入和滾動，它才能幫你完成你用語音或文字交代的任務。</string>
 </resources>

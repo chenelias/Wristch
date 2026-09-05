@@ -259,7 +259,7 @@ class ComputerUseAgent(
         confirmation: VibeConfirmation,
         onStep: (String) -> Unit,
     ): String {
-        var shot = start ?: return "Screenshot failed; is the service connected?"
+        var shot = start ?: return "無法擷取螢幕畫面，請確認無障礙服務是否已連接。"
 
         val history = mutableListOf(
             Content.builder()
@@ -300,12 +300,12 @@ class ComputerUseAgent(
 
             val reply = response.candidates().orElse(emptyList())
                 .firstOrNull()?.content()?.orElse(null)
-                ?: return "Model returned no content."
+                ?: return "模型沒有回傳任何內容。"
             history += reply
 
             val calls = response.functionCalls()
             if (calls.isNullOrEmpty()) {
-                val said = response.text() ?: "Finished."
+                val said = response.text() ?: "已完成。"
                 // A turn with no action is usually the run ending. The one exception is a
                 // question the model cannot answer for itself, which it marks so that it
                 // can be told apart from an outcome without a second round trip.
@@ -389,7 +389,7 @@ class ComputerUseAgent(
                 statusOverlay.update(reason ?: name)
 
                 // Re-shoot after every action: the next decision must see what this one did.
-                shot = capture() ?: return "Screenshot failed mid-run after $name."
+                shot = capture() ?: return "執行 $name 之後無法再擷取螢幕畫面。"
 
                 // A scroll that moved nothing is the only reliable proof a page has no
                 // more to it. Told plainly, it is what stops the model both from scrolling
@@ -414,7 +414,7 @@ class ComputerUseAgent(
             trimScreenshots(history)
         }
 
-        return done("Stopped after $maxSteps steps without finishing.")
+        return done("做了 $maxSteps 個步驟還沒完成，已經停下來。")
     }
 
     /**
@@ -434,7 +434,7 @@ class ComputerUseAgent(
 
     /** How a run reads when the one thing it needed was not given. */
     private fun unanswered(question: String): String =
-        "Stopped: this needed an answer to \"$question\" and did not get one."
+        "已停下：這個任務需要你回答「$question」，但沒有得到答案。"
 
     /** What was added mid-run, as one block for the model and one line each for the log. */
     private class Notes(val lines: List<String>, val prompt: String)
@@ -734,6 +734,11 @@ class ComputerUseAgent(
               that you are done. The task is reported through your final reply, not
               through where the phone ends up. Leave the screen exactly where the last
               action left it - whichever app that is is where the person will look first.
+            - Your final reply is read by the person, not by another machine: it is shown
+              to them on a card and may be read aloud. Write it in the language the task
+              was written in - for Traditional Chinese, reply in Traditional Chinese, never
+              Simplified. One or two plain sentences saying what you did, or what stopped
+              you. No tool names, no step numbers, no coordinates.
         """.trimIndent()
         private const val MIME_JPEG = "image/jpeg"
         private const val JPEG_QUALITY = 80
@@ -892,7 +897,12 @@ class ComputerUseAgent(
             .build()
 
         private const val REQUIRE_CONFIRMATION = "require_confirmation"
-        private const val STOPPED = "Stopped by the user."
+
+        /**
+         * User-facing, unlike [DECLINED] and [END_OF_PAGE] below: this is the outcome a
+         * stopped run is filed under, shown on the outcome card and read aloud.
+         */
+        private const val STOPPED = "已由你停止。"
         private const val END_OF_PAGE =
             " The screen did not move, so this is the bottom of the page - everything " +
                 "it contains has now been shown to you."

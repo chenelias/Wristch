@@ -112,7 +112,7 @@ private val STEP_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("H
 fun RunDetailScreen(
     runId: String,
     onBack: () -> Unit,
-    onRunAgain: (String) -> Unit,
+    onRunAgain: (goal: String, vibeId: String?) -> Unit,
     onContinue: (String) -> Unit,
     onOpenRun: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -162,7 +162,7 @@ fun RunDetailScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("This run is no longer in the history.")
+            Text("這筆紀錄已經不在歷史裡了。")
             BackToHistory(onBack)
         }
         return
@@ -170,10 +170,10 @@ fun RunDetailScreen(
 
     if (confirmDelete) {
         ConfirmDialog(
-            title = "Delete this run?",
-            body = "\"${run.label.ifBlank { "(no goal)" }}\" and its " +
-                "${run.steps.size} recorded actions will be removed. This cannot be undone.",
-            confirmLabel = "Delete",
+            title = "刪除這筆紀錄？",
+            body = "「${run.label.ifBlank { "(未填寫任務)" }}」以及它的 " +
+                "${run.steps.size} 個已記錄動作都會被移除，且無法復原。",
+            confirmLabel = "刪除",
             onConfirm = {
                 confirmDelete = false
                 // Back first: the screen reads the run out of the store by id, and the
@@ -203,7 +203,7 @@ fun RunDetailScreen(
             asking = false
             answer
                 .onSuccess { RunHistory.say(runId, MessageAuthor.AGENT, it) }
-                .onFailure { trouble = "Could not answer that. Check the connection and try again." }
+                .onFailure { trouble = "無法回答這個問題。請檢查網路連線後再試一次。" }
         }
     }
 
@@ -221,11 +221,16 @@ fun RunDetailScreen(
         // The same vibe as the run being carried on, not none: a vibe carries standing
         // rules about who the people are and which app to reach them in, and a follow-up
         // that dropped it would be answered through some other app for no visible reason.
+        // A run recorded before vibes were kept on the record has none to inherit, and
+        // the default is a better answer than none at all: none means every step stops for
+        // approval and the standing instructions are gone, which reads as the vibe having
+        // been ignored.
         val vibe = parent.vibeId?.let { id -> vibes.firstOrNull { it.id == id } }
+            ?: VibeStore.default()
         followUpStarted = true
         if (!AgentSession.start(context, target, text, vibe = vibe, parent = parent)) {
             followUpStarted = false
-            trouble = "Another run is already going. Wait for it to finish."
+            trouble = "已經有另一個任務在執行了。請等它完成。"
         }
     }
 
@@ -258,10 +263,10 @@ fun RunDetailScreen(
             BackToHistory(onBack)
             Spacer(Modifier.weight(1f))
             if (canRepeat) {
-                IconButton(onClick = { onRunAgain(run.goal) }) {
+                IconButton(onClick = { onRunAgain(run.goal, run.vibeId) }) {
                     Icon(
                         imageVector = WristchIcons.Sparkle,
-                        contentDescription = "Run this task again",
+                        contentDescription = "再執行一次這個任務",
                     )
                 }
             }
@@ -271,7 +276,7 @@ fun RunDetailScreen(
                 IconButton(onClick = { confirmDelete = true }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete this run",
+                        contentDescription = "刪除這筆紀錄",
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -289,12 +294,18 @@ fun RunDetailScreen(
         ) {
             item {
                 Box(Modifier.padding(bottom = 16.dp)) {
-                    Header(run = run, onOpenParent = onOpenRun)
+                    Header(
+                        run = run,
+                        vibeName = run.vibeId?.let { id ->
+                            vibes.firstOrNull { it.id == id }?.name
+                        },
+                        onOpenParent = onOpenRun,
+                    )
                 }
             }
             item {
                 Text(
-                    text = if (run.steps.isEmpty()) "No actions recorded" else "Actions",
+                    text = if (run.steps.isEmpty()) "沒有記錄到動作" else "動作",
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
                 )
@@ -309,7 +320,7 @@ fun RunDetailScreen(
             if (run.messages.isNotEmpty()) {
                 item {
                     Text(
-                        text = "About this task",
+                        text = "關於這個任務",
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
                     )
@@ -417,10 +428,10 @@ private fun TaskComposer(
                 if (text.isEmpty()) {
                     Text(
                         text = when {
-                            running -> "Running - ask when it is done"
-                            recording -> "Listening..."
-                            transcribing -> "Writing it down..."
-                            else -> "Ask about this task, or say what is next"
+                            running -> "執行中 - 等它完成再問"
+                            recording -> "聆聽中…"
+                            transcribing -> "正在寫下來…"
+                            else -> "問這個任務，或說出下一步要做什麼"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (recording || transcribing) {
@@ -453,9 +464,9 @@ private fun TaskComposer(
                 else -> WristchIcons.Mic
             },
             label = when {
-                typed -> "Ask about this task"
-                recording -> "Stop and write it down"
-                else -> "Say it"
+                typed -> "問這個任務"
+                recording -> "停下來並寫成文字"
+                else -> "說出來"
             },
             enabled = if (typed) canAsk && !busy else !transcribing,
             container = MaterialTheme.colorScheme.secondaryContainer,
@@ -475,7 +486,7 @@ private fun TaskComposer(
         // Do it: the sentence becomes the next task, with this one behind it.
         ComposerButton(
             icon = WristchIcons.Sparkle,
-            label = "Run this as the next task",
+            label = "把這句當成下一個任務執行",
             enabled = typed && canRun && !busy,
             container = MaterialTheme.colorScheme.primary,
             content = MaterialTheme.colorScheme.onPrimary,
@@ -567,7 +578,7 @@ private fun Thinking() {
     ) {
         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         Text(
-            text = "Reading the run...",
+            text = "正在讀這筆紀錄…",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -592,7 +603,7 @@ private fun BackToHistory(onBack: () -> Unit) {
             )
         }
         Text(
-            text = "Back to history",
+            text = "返回紀錄",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -600,9 +611,9 @@ private fun BackToHistory(onBack: () -> Unit) {
 }
 
 @Composable
-private fun Header(run: RunRecord, onOpenParent: (String) -> Unit) {
+private fun Header(run: RunRecord, vibeName: String?, onOpenParent: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(run.label.ifBlank { "(no goal)" }, style = MaterialTheme.typography.headlineSmall)
+        Text(run.label.ifBlank { "(未填寫任務)" }, style = MaterialTheme.typography.headlineSmall)
 
         // The sentence that was typed, kept under the name written for it: the title is
         // what the run is recognised by, and this is what running it again will send.
@@ -615,13 +626,16 @@ private fun Header(run: RunRecord, onOpenParent: (String) -> Unit) {
         }
 
         val statusText = when (run.status) {
-            RunStatus.RUNNING -> "Running"
-            RunStatus.DONE -> "Done"
-            RunStatus.FAILED -> "Failed"
+            RunStatus.RUNNING -> "執行中"
+            RunStatus.DONE -> "已完成"
+            RunStatus.FAILED -> "失敗"
         }
-        val duration = run.durationMs?.let { " - took ${formatDuration(it)}" } ?: ""
+        val duration = run.durationMs?.let { " - 花了 ${formatDuration(it)}" } ?: ""
+        // Which vibe a run went out under is the first thing anyone asks when it behaves
+        // unlike the vibe they set, and until now the record did not say.
+        val under = vibeName?.let { " - $it" } ?: ""
         Text(
-            text = "$statusText - ${STAMP_FORMAT.format(atZone(run.startedAt))}$duration",
+            text = "$statusText$under - ${STAMP_FORMAT.format(atZone(run.startedAt))}$duration",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -646,7 +660,7 @@ private fun Header(run: RunRecord, onOpenParent: (String) -> Unit) {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = "Carried on from an earlier task",
+                        text = "接續自之前的任務",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -669,7 +683,7 @@ private fun Header(run: RunRecord, onOpenParent: (String) -> Unit) {
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text("Outcome", style = MaterialTheme.typography.labelMedium)
+                    Text("結果", style = MaterialTheme.typography.labelMedium)
                     Text(run.outcome, style = MaterialTheme.typography.bodyMedium)
                 }
             }

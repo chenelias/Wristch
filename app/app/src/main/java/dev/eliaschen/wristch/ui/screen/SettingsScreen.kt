@@ -31,7 +31,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val returnOnFinish by SettingsStore.returnOnFinish.collectAsState()
 
     Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
-        ScreenHeader(title = "Settings", onBack = onBack)
+        ScreenHeader(title = "設定", onBack = onBack)
 
         Column(
             modifier = Modifier.padding(horizontal = 24.dp),
@@ -45,9 +45,9 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Speak run outcomes", style = MaterialTheme.typography.titleMedium)
+                        Text("念出執行結果", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = "Read the result aloud when a run finishes.",
+                            text = "任務做完時用語音把結果念出來，不用拿起手機看。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -67,10 +67,9 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Come back to the task", style = MaterialTheme.typography.titleMedium)
+                        Text("完成後回到任務", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = "Open the task in Wristch when its run finishes, so it " +
-                                "can be asked about or carried on.",
+                            text = "任務做完後自動回到 Wristch，你可以馬上追問結果或交代下一步。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

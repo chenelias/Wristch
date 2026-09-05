@@ -115,15 +115,15 @@ private fun ConfirmationCard(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Wristch needs approval", style = MaterialTheme.typography.titleMedium)
+                Text("Agent 想做這件事，需要你同意", style = MaterialTheme.typography.titleMedium)
                 Text(action, style = MaterialTheme.typography.bodyMedium)
                 Text(explanation, style = MaterialTheme.typography.bodySmall)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 ) {
-                    TextButton(onClick = onDeny) { Text("Deny") }
-                    Button(onClick = onAllow) { Text("Allow") }
+                    TextButton(onClick = onDeny) { Text("不要") }
+                    Button(onClick = onAllow) { Text("允許") }
                 }
             }
         }

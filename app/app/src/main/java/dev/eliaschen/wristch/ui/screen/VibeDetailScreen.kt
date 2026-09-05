@@ -78,7 +78,7 @@ fun VibeDetailScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("This vibe no longer exists.")
+            Text("這個氛圍已經不存在了。")
             BackToVibes(onBack)
         }
         return
@@ -86,10 +86,10 @@ fun VibeDetailScreen(
 
     if (confirmDelete) {
         ConfirmDialog(
-            title = "Delete this vibe?",
-            body = "\"${vibe.name.ifBlank { "(unnamed)" }}\" and everything written under " +
-                "it - wording, notes, what it may read - will be removed. This cannot be undone.",
-            confirmLabel = "Delete",
+            title = "刪除這個氛圍？",
+            body = "「${vibe.name.ifBlank { "(未命名)" }}」以及它底下寫的所有內容" +
+                "（口氣、背景、可讀取的資料）都會被移除，且無法復原。",
+            confirmLabel = "刪除",
             onConfirm = {
                 confirmDelete = false
                 // Back first: this screen reads the vibe out of the store by id, and the
@@ -123,7 +123,7 @@ fun VibeDetailScreen(
                 IconButton(onClick = { confirmDelete = true }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete this vibe",
+                        contentDescription = "刪除這個氛圍",
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -139,11 +139,11 @@ fun VibeDetailScreen(
                 VibeAvatar(vibe, size = 56.dp)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = vibe.name.ifBlank { "(unnamed)" },
+                        text = vibe.name.ifBlank { "(未命名)" },
                         style = MaterialTheme.typography.headlineSmall,
                     )
                     Text(
-                        text = if (vibe.enabled) "On" else "Off - not offered to the watch",
+                        text = if (vibe.enabled) "已開啟" else "已關閉 - 不會被任務選用",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -159,7 +159,7 @@ fun VibeDetailScreen(
             OutlinedTextField(
                 value = vibe.name,
                 onValueChange = { name -> edit { it.copy(name = name) } },
-                label = { Text("Name") },
+                label = { Text("名稱") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -169,8 +169,8 @@ fun VibeDetailScreen(
             OutlinedTextField(
                 value = vibe.subtitle,
                 onValueChange = { subtitle -> edit { it.copy(subtitle = subtitle) } },
-                label = { Text("Who or what it covers") },
-                placeholder = { Text("Teachers, classmates, clubs") },
+                label = { Text("涵蓋哪些人或事") },
+                placeholder = { Text("老師、同學、社團") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -178,7 +178,7 @@ fun VibeDetailScreen(
 
         item(key = "accent") {
             Column {
-                SectionHeading("Colour")
+                SectionHeading("顏色")
                 AccentPicker(
                     selected = vibe.accent,
                     onSelect = { index -> edit { it.copy(accent = index) } },
@@ -188,10 +188,10 @@ fun VibeDetailScreen(
 
         item(key = "instruction") {
             Column {
-                SectionHeading("How it should sound")
+                SectionHeading("該是什麼口氣")
                 Text(
-                    text = "Given to the model before your task. Tone, wording, standing " +
-                        "rules - anything that would otherwise have to be typed every time.",
+                    text = "寫在這裡的規矩，Agent 每次都會先看過再動手。" +
+                        "適合放那些不寫下來、就得每次重打一次的交代。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -199,7 +199,7 @@ fun VibeDetailScreen(
                 OutlinedTextField(
                     value = vibe.instruction,
                     onValueChange = { text -> edit { it.copy(instruction = text) } },
-                    placeholder = { Text("Address teachers by title and surname, keep it short") },
+                    placeholder = { Text("稱呼老師要用姓氏加職稱，話說短一點") },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -208,10 +208,10 @@ fun VibeDetailScreen(
 
         item(key = "notes") {
             Column {
-                SectionHeading("What it already knows")
+                SectionHeading("它已經知道的事")
                 Text(
-                    text = "Background the model may use and quote - names, habits, the " +
-                        "usual meeting place.",
+                    text = "關於這些人與事的背景，Agent 會當成事實來用。" +
+                        "例如稱呼、習慣、常去的地方。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -219,7 +219,7 @@ fun VibeDetailScreen(
                 OutlinedTextField(
                     value = vibe.notes,
                     onValueChange = { text -> edit { it.copy(notes = text) } },
-                    placeholder = { Text("Mr. Lin runs badminton practice on Thursdays") },
+                    placeholder = { Text("林老師星期四帶羽球練習") },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -228,10 +228,10 @@ fun VibeDetailScreen(
 
         item(key = "sources-heading") {
             Column {
-                SectionHeading("What it may pull in")
+                SectionHeading("它可以讀取什麼")
                 Text(
-                    text = "Only under this vibe. Family can carry where you are; school " +
-                        "does not have to.",
+                    text = "開啟後，Agent 動手前會先把這些資料讀進來。" +
+                        "這裡的設定只影響這個氛圍：「家人」可以帶上你在哪裡，「學校」則不必。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -260,9 +260,10 @@ fun VibeDetailScreen(
 
         item(key = "confirmation-heading") {
             Column {
-                SectionHeading("Before it acts")
+                SectionHeading("動手之前")
                 Text(
-                    text = "How much the agent asks while this vibe is in charge.",
+                    text = "使用這個氛圍時，Agent 要先問過你才能動作到什麼程度。" +
+                        "不管選哪一個，只要它搞不清楚對方是誰，還是會停下來問。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -317,7 +318,7 @@ private fun SourceRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(source.label, style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = if (checked) source.explanation else "Not shared with this vibe",
+                text = if (checked) source.explanation else "不提供給這個氛圍",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -385,7 +386,7 @@ private fun AccentPicker(selected: Int, onSelect: (Int) -> Unit) {
                     if (isSelected) {
                         Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = "Selected",
+                            contentDescription = "已選取",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp),
                         )
@@ -410,7 +411,7 @@ private fun BackToVibes(onBack: () -> Unit) {
             )
         }
         Text(
-            text = "Back to vibes",
+            text = "返回氛圍列表",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

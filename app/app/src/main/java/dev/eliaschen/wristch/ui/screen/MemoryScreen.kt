@@ -55,9 +55,9 @@ fun MemoryScreen(
     // No Scaffold here: the nav graph already owns one, and nesting a second would apply
     // the window insets twice.
     Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
-        ScreenHeader(title = "Memory", onBack = onBack) {
+        ScreenHeader(title = "記憶", onBack = onBack) {
             IconButton(onClick = { onOpenMemory(MemoryStore.add(author = MemoryAuthor.USER)) }) {
-                Icon(Icons.Default.Add, contentDescription = "Remember something")
+                Icon(Icons.Default.Add, contentDescription = "記下一件事")
             }
         }
 
@@ -69,9 +69,8 @@ fun MemoryScreen(
             if (memories.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        text = "Nothing remembered yet. Tap + to write something the " +
-                            "agent should know, or let it write down what it learns " +
-                            "while it works.",
+                        text = "還沒有任何記憶。按 + 可以自己寫下你想讓 Agent 記住的事；" +
+                            "它也會在執行任務時，把學到的事自己記下來。",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -105,7 +104,7 @@ private fun MemoryRow(memory: Memory, vibeName: String?, onClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = memory.title.ifBlank { "Empty memory" },
+                text = memory.title.ifBlank { "空白記憶" },
                 style = MaterialTheme.typography.titleMedium,
                 color = if (memory.title.isBlank()) {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -123,7 +122,7 @@ private fun MemoryRow(memory: Memory, vibeName: String?, onClick: () -> Unit) {
                 AuthorBadge(memory.author)
                 if (vibeName != null) {
                     Text(
-                        text = "for $vibeName",
+                        text = "用於$vibeName",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -165,7 +164,7 @@ internal fun AuthorBadge(author: MemoryAuthor) {
                 )
             }
             Text(
-                text = if (agent) "Agent" else "You",
+                text = if (agent) "Agent" else "你",
                 style = MaterialTheme.typography.labelSmall,
                 color = if (agent) {
                     MaterialTheme.colorScheme.onSecondaryContainer

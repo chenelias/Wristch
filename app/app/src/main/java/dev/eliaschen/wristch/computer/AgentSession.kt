@@ -117,6 +117,15 @@ object AgentSession {
                     parent?.let(::carryOver),
                 ).joinToString("\n\n")
                 val prompt = if (preface.isEmpty()) goal else "$preface\n\nThe task:\n$goal"
+                // The one line that settles "did my vibe reach it?" from a logcat, which
+                // is otherwise only answerable by watching how the model behaves and
+                // reasoning backwards from it.
+                Log.i(
+                    TAG,
+                    "run $id under vibe=${vibe?.name ?: "none"} " +
+                        "confirmation=${vibe?.confirmation ?: VibeConfirmation.ALWAYS} " +
+                        "preface=${preface.length} chars",
+                )
 
                 val outcome = agent.run(
                     prompt,
@@ -132,13 +141,13 @@ object AgentSession {
                 // The record has to be closed even here, or it stays "running" forever -
                 // and NonCancellable is what lets that write happen in a cancelled scope.
                 withContext(NonCancellable) {
-                    RunHistory.fail(id, "Cancelled before it finished.")
+                    RunHistory.fail(id, "還沒完成就被取消了。")
                 }
                 throw cancelled
             } catch (error: Exception) {
                 // A failed request should read as the last line of the log, not as a crash
                 // in the middle of a run that has already moved the real screen.
-                val message = "error: ${error.message ?: error::class.simpleName}"
+                val message = "發生錯誤：${error.message ?: error::class.simpleName}"
                 _steps.value = _steps.value + message
                 RunHistory.fail(id, message)
             } finally {

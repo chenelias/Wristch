@@ -47,12 +47,12 @@ fun AccessibilityBlockerScreen(modifier: Modifier = Modifier) {
             PermissionBadge()
             Spacer(Modifier.height(20.dp))
             Text(
-                "Accessibility permission required",
+                "需要無障礙權限",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "Allow Wristch to access accessibility service on your device",
+                "請允許 Wristch 使用你裝置上的無障礙服務",
                 textAlign = TextAlign.Center,
                 color = Color.Gray, fontSize = 13.sp
             )
@@ -62,7 +62,7 @@ fun AccessibilityBlockerScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             Text(
-                "Enable Permission"
+                "開啟權限"
             )
         }
     }

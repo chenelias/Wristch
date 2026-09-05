@@ -102,7 +102,7 @@ private fun SearchBar(onSearch: () -> Unit, modifier: Modifier = Modifier) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Search history and notes",
+                text = "搜尋紀錄與記憶",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -132,7 +132,7 @@ private fun AgentButton(onAgent: () -> Unit, modifier: Modifier = Modifier) {
         Box(contentAlignment = Alignment.Center,modifier= Modifier.fillMaxSize()) {
             Icon(
                 imageVector = WristchIcons.Sparkle,
-                contentDescription = "Ask the agent to do something",
+                contentDescription = "交辦 Agent 做事",
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(28.dp),
             )

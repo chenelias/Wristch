@@ -123,7 +123,7 @@ data object Settings : NavKey
  * again from its detail screen.
  */
 @Serializable
-data class Agent(val goal: String? = null) : NavKey
+data class Agent(val goal: String? = null, val vibeId: String? = null) : NavKey
 
 @Composable
 fun WristchNavGraph(modifier: Modifier = Modifier) {
@@ -203,12 +203,12 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                         RunDetailScreen(
                             runId = key.runId,
                             onBack = { backStack.removeLastOrNull() },
-                            onRunAgain = { goal ->
+                            onRunAgain = { goal, vibeId ->
                                 // Replace rather than stack: coming back from the run the
                                 // detail screen just launched should land on history, not
                                 // on the record of the run that was copied.
                                 backStack.removeLastOrNull()
-                                backStack.add(Agent(goal))
+                                backStack.add(Agent(goal, vibeId))
                             },
                             onOpenRun = { backStack.add(RunDetail(it)) },
                             onContinue = { newRunId ->
@@ -253,6 +253,7 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                     entry<Agent> { key ->
                         AgentScreen(
                             initialGoal = key.goal,
+                            initialVibeId = key.vibeId,
                             onBack = { backStack.removeLastOrNull() },
                             onRunStarted = { runId ->
                                 // Replace rather than stack: coming back from the run this

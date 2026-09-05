@@ -101,7 +101,7 @@ fun SearchScreen(
             FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back to home",
+                    contentDescription = "返回上一頁",
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -111,12 +111,12 @@ fun SearchScreen(
                 modifier = Modifier
                     .weight(1f)
                     .focusRequester(focus),
-                placeholder = { Text("Search history and notes") },
+                placeholder = { Text("搜尋紀錄與記憶") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { query = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear the search")
+                            Icon(Icons.Default.Close, contentDescription = "清除搜尋")
                         }
                     }
                 },
@@ -136,14 +136,14 @@ fun SearchScreen(
 
         if (!ready) {
             Hint(
-                if (query.isBlank()) "Search past runs and everything in the notebook."
-                else "Keep typing - one letter matches most of it.",
+                if (query.isBlank()) "搜尋過去的執行紀錄，以及所有記憶。"
+                else "再多打幾個字，目前的關鍵字太短了。",
             )
             return@Column
         }
 
         if (runHits.isEmpty() && memoryHits.isEmpty()) {
-            Hint("Nothing matches \"${query.trim()}\".")
+            Hint("找不到符合「${query.trim()}」的內容。")
             return@Column
         }
 
@@ -153,13 +153,13 @@ fun SearchScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (runHits.isNotEmpty()) {
-                item(key = "runs-header") { SearchHeader(label("Run", runHits.size)) }
+                item(key = "runs-header") { SearchHeader("${runHits.size} 筆紀錄") }
                 items(runHits, key = { it.id }) { run ->
                     RunRow(run = run, onClick = { onOpenRun(run.id) })
                 }
             }
             if (memoryHits.isNotEmpty()) {
-                item(key = "memory-header") { SearchHeader(label("Memory", memoryHits.size)) }
+                item(key = "memory-header") { SearchHeader("${memoryHits.size} 筆記憶") }
                 items(memoryHits, key = { it.id }) { memory -> MemoryRow(memory) }
             }
         }
@@ -195,8 +195,8 @@ private fun SearchHeader(text: String) {
 @Composable
 private fun MemoryRow(memory: Memory) {
     val vibes by VibeStore.vibes.collectAsState()
-    val scope = memory.vibeId?.let { id -> vibes.firstOrNull { it.id == id }?.name } ?: "All vibes"
-    val author = if (memory.author == MemoryAuthor.AGENT) "Wristch" else "You"
+    val scope = memory.vibeId?.let { id -> vibes.firstOrNull { it.id == id }?.name } ?: "所有氛圍"
+    val author = if (memory.author == MemoryAuthor.AGENT) "Agent" else "你"
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -215,9 +215,6 @@ private fun MemoryRow(memory: Memory) {
         }
     }
 }
-
-private fun label(noun: String, count: Int): String =
-    if (count == 1) "1 $noun" else "$count ${noun}s"
 
 private fun RunRecord.matches(needle: String): Boolean =
     title.lowercase().contains(needle) ||
