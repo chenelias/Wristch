@@ -52,7 +52,7 @@ Wristch 的目標是讓你用一句話完成這些事。只要用語音說出你
 
 ## 關於 WearOS
 
-專案初期做過一個 WearOS 手勢辨識原型（TensorFlow Lite 讀 IMU 資料，參考 Apple 的論文 [_Enabling Hand Gesture Customization on Wrist-Worn Devices_](https://arxiv.org/abs/2203.15239)），想用握拳、捏指觸發手機端的 Agent，但最後因時間不足因此沒有和手機 App 完整串接，所以本專案的重心與完成度都在手機 App 上。
+專案初期做過一個 WearOS 手勢辨識原型（TensorFlow Lite 讀 IMU 資料，參考 Apple 的論文 [_Enabling Hand Gesture Customization on Wrist-Worn Devices_](https://arxiv.org/abs/2203.15239)），想用握拳、捏指觸發手機端不同Vibe的 Agent，但最後因時間不足因此沒有和手機 App 完整串接，所以本專案的重心與完成度都在手機 App 上。
 
 ## 系統需求
 
