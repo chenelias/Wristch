@@ -4,13 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,9 +45,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import dev.eliaschen.wristch.history.RunHistory
 import dev.eliaschen.wristch.history.RunRecord
-import dev.eliaschen.wristch.notes.Note
-import dev.eliaschen.wristch.notes.NoteAuthor
-import dev.eliaschen.wristch.notes.NoteStore
+import dev.eliaschen.wristch.memory.Memory
+import dev.eliaschen.wristch.memory.MemoryAuthor
+import dev.eliaschen.wristch.memory.MemoryStore
+import dev.eliaschen.wristch.ui.component.ScreenGutter
+import dev.eliaschen.wristch.ui.component.screenListPadding
 import dev.eliaschen.wristch.vibe.VibeStore
 
 /** Below this a query matches too much to be worth listing. */
@@ -73,13 +72,14 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
 ) {
     val runs by RunHistory.runs.collectAsState()
-    val notes by NoteStore.notes.collectAsState()
+    val memories by MemoryStore.memories.collectAsState()
     var query by remember { mutableStateOf("") }
 
     val needle = query.trim().lowercase()
     val ready = needle.length >= MIN_QUERY
     val runHits = if (!ready) emptyList() else runs.filter { it.matches(needle) }
-    val noteHits = if (!ready) emptyList() else notes.filter { it.text.lowercase().contains(needle) }
+    val memoryHits =
+        if (!ready) emptyList() else memories.filter { it.text.lowercase().contains(needle) }
 
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -89,7 +89,9 @@ fun SearchScreen(
 
     // No Scaffold here: the nav graph already owns one, and nesting a second would apply
     // the window insets twice.
-    Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
+    // Results end where the keyboard begins: a match hidden behind it is a match the
+    // person has to dismiss the keyboard to find.
+    Column(modifier = modifier.fillMaxSize().statusBarsPadding().imePadding()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -140,16 +142,14 @@ fun SearchScreen(
             return@Column
         }
 
-        if (runHits.isEmpty() && noteHits.isEmpty()) {
+        if (runHits.isEmpty() && memoryHits.isEmpty()) {
             Hint("Nothing matches \"${query.trim()}\".")
             return@Column
         }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = WindowInsets.safeDrawing
-                .add(WindowInsets(left = 24.dp, right = 24.dp, bottom = 24.dp))
-                .asPaddingValues(),
+            contentPadding = screenListPadding(top = 4.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (runHits.isNotEmpty()) {
@@ -158,9 +158,9 @@ fun SearchScreen(
                     RunRow(run = run, onClick = { onOpenRun(run.id) })
                 }
             }
-            if (noteHits.isNotEmpty()) {
-                item(key = "notes-header") { SearchHeader(label("Note", noteHits.size)) }
-                items(noteHits, key = { it.id }) { note -> NoteRow(note) }
+            if (memoryHits.isNotEmpty()) {
+                item(key = "memory-header") { SearchHeader(label("Memory", memoryHits.size)) }
+                items(memoryHits, key = { it.id }) { memory -> MemoryRow(memory) }
             }
         }
     }
@@ -172,7 +172,7 @@ private fun Hint(text: String) {
         text = text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 8.dp),
     )
 }
 
@@ -187,21 +187,21 @@ private fun SearchHeader(text: String) {
 }
 
 /**
- * A note as a result: the note itself, over who wrote it and which vibe can see it.
+ * A memory as a result: the text itself, over who wrote it and which vibe can see it.
  *
- * Not clickable, because there is nowhere deeper for a note to go - the whole note is
+ * Not clickable, because there is nowhere deeper for it to go - the whole of it is
  * already here.
  */
 @Composable
-private fun NoteRow(note: Note) {
+private fun MemoryRow(memory: Memory) {
     val vibes by VibeStore.vibes.collectAsState()
-    val scope = note.vibeId?.let { id -> vibes.firstOrNull { it.id == id }?.name } ?: "All vibes"
-    val author = if (note.author == NoteAuthor.AGENT) "Wristch" else "You"
+    val scope = memory.vibeId?.let { id -> vibes.firstOrNull { it.id == id }?.name } ?: "All vibes"
+    val author = if (memory.author == MemoryAuthor.AGENT) "Wristch" else "You"
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = note.text.trim(),
+                text = memory.text.trim(),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,

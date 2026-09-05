@@ -114,6 +114,72 @@ object WristchIcons {
         }
     }
 
+    /**
+     * A notepad with three lines of text, for the notebook - distinct from a plain list
+     * or menu glyph, which read as navigation rather than as something written down.
+     *
+     * Drawn as three contours in one path: the outer page and an inner rect wound the
+     * opposite way cancel out under the nonzero fill rule, leaving a hollow border: the
+     * three short bars inside it are separate clockwise contours, so they fill solid
+     * where the border does not.
+     */
+    val Memory: ImageVector by lazy {
+        icon("Memory") {
+            // Outer page, clockwise.
+            moveTo(4f, 3f)
+            horizontalLineTo(20f)
+            verticalLineTo(21f)
+            horizontalLineTo(4f)
+            close()
+            // Inner hole, counter-clockwise - cancels the outer fill, leaving a border.
+            moveTo(5.5f, 4.5f)
+            verticalLineTo(19.5f)
+            horizontalLineTo(18.5f)
+            verticalLineTo(4.5f)
+            close()
+            // Three lines of text, clockwise, sitting inside the hole.
+            moveTo(7f, 7.5f)
+            horizontalLineTo(16f)
+            verticalLineTo(8.7f)
+            horizontalLineTo(7f)
+            close()
+            moveTo(7f, 11.5f)
+            horizontalLineTo(16f)
+            verticalLineTo(12.7f)
+            horizontalLineTo(7f)
+            close()
+            moveTo(7f, 15.5f)
+            horizontalLineTo(16f)
+            verticalLineTo(16.7f)
+            horizontalLineTo(7f)
+            close()
+        }
+    }
+
+    /** A microphone, for voice input. */
+    val Mic: ImageVector by lazy {
+        icon("Mic") {
+            moveTo(12f, 14f)
+            curveTo(13.66f, 14f, 15f, 12.66f, 15f, 11f)
+            verticalLineTo(5f)
+            curveTo(15f, 3.34f, 13.66f, 2f, 12f, 2f)
+            curveTo(10.34f, 2f, 9f, 3.34f, 9f, 5f)
+            verticalLineTo(11f)
+            curveTo(9f, 12.66f, 10.34f, 14f, 12f, 14f)
+            close()
+            moveTo(17f, 11f)
+            curveTo(17f, 13.76f, 14.76f, 16f, 12f, 16f)
+            curveTo(9.24f, 16f, 7f, 13.76f, 7f, 11f)
+            horizontalLineTo(5f)
+            curveTo(5f, 14.53f, 7.61f, 17.43f, 11f, 17.92f)
+            verticalLineTo(21f)
+            horizontalLineTo(13f)
+            verticalLineTo(17.92f)
+            curveTo(16.39f, 17.43f, 19f, 14.53f, 19f, 11f)
+            close()
+        }
+    }
+
     private fun icon(
         name: String,
         pathData: androidx.compose.ui.graphics.vector.PathBuilder.() -> Unit,

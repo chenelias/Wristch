@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,8 +23,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -43,6 +45,7 @@ import dev.eliaschen.wristch.history.RunHistory
 import dev.eliaschen.wristch.history.RunRecord
 import dev.eliaschen.wristch.history.RunStatus
 import dev.eliaschen.wristch.ui.component.WristchToolbarDefaults
+import dev.eliaschen.wristch.ui.icon.WristchIcons
 import dev.eliaschen.wristch.vibe.Vibe
 import dev.eliaschen.wristch.vibe.VibeStore
 
@@ -64,7 +67,8 @@ fun HomeScreen(
     onOpenHistory: () -> Unit,
     onOpenVibe: (String) -> Unit,
     onOpenVibes: () -> Unit,
-    onOpenNotes: () -> Unit,
+    onOpenMemory: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val runs by RunHistory.runs.collectAsState()
@@ -106,17 +110,38 @@ fun HomeScreen(
                 .padding(start = 24.dp, end = 24.dp, top = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
-            // Left-side management entry: open Notes
-            IconButton(onClick = onOpenNotes, modifier = Modifier.align(Alignment.CenterStart)) {
-                Icon(imageVector = Icons.Default.List, contentDescription = "Notes")
+            // Left-side management entry: open Memory.
+            //
+            // Offset left by the icon button's own touch-target inset, so the glyph
+            // itself lands on the same 24dp gutter as the section content below it
+            // instead of sitting noticeably further in - the 48dp touch target is kept
+            // for reachability, it just no longer pushes the visible icon out of line.
+            IconButton(
+                onClick = onOpenMemory,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = (-12).dp),
+            ) {
+                Icon(imageVector = WristchIcons.Memory, contentDescription = "Memory")
             }
             Text(text = "Wristch", style = MaterialTheme.typography.headlineSmall)
+            // Mirrors the Memory button's offset on the other side, so both icons sit on
+            // the same 24dp gutter as the content below despite the 48dp touch target.
+            IconButton(
+                onClick = onOpenSettings,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 12.dp),
+            ) {
+                Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
+            }
         }
 
         SectionHeader(
             title = "Vibes",
-            arrowDescription = "See all vibes",
-            onArrow = onOpenVibes,
+            icon = Icons.Default.Edit,
+            iconDescription = "Edit vibes",
+            onIcon = onOpenVibes,
         )
 
         // Horizontal, because a vibe is picked by recognising it rather than by reading
@@ -140,8 +165,9 @@ fun HomeScreen(
 
         SectionHeader(
             title = day?.let { dayLabel(it) } ?: "Today",
-            arrowDescription = "See all history",
-            onArrow = onOpenHistory,
+            icon = Icons.AutoMirrored.Filled.ArrowForward,
+            iconDescription = "See all history",
+            onIcon = onOpenHistory,
         )
 
         if (recent.isEmpty()) {
@@ -164,12 +190,13 @@ fun HomeScreen(
     }
 }
 
-/** A heading with the way out of it: the arrow opens the full list this section samples. */
+/** A heading with the way out of it: the icon opens the full list this section samples. */
 @Composable
 private fun SectionHeader(
     title: String,
-    arrowDescription: String,
-    onArrow: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconDescription: String,
+    onIcon: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -182,10 +209,10 @@ private fun SectionHeader(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onArrow) {
+        IconButton(onClick = onIcon) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = arrowDescription,
+                imageVector = icon,
+                contentDescription = iconDescription,
                 tint = MaterialTheme.colorScheme.primary,
             )
         }

@@ -24,6 +24,27 @@ data class RunStep(
     val at: Long = 0L,
 )
 
+/** Who wrote a line in a task's conversation. */
+enum class MessageAuthor {
+    USER,
+    AGENT,
+}
+
+/**
+ * One turn of the conversation held about a task, after the task itself is over.
+ *
+ * Kept on the run rather than in a store of its own: a question about a run is only ever
+ * asked with that run open, and it is meaningless without the steps it refers to. Saved
+ * with the record, so the thread is still there next week - the whole point of being able
+ * to ask about a task is that the asking does not have to happen in the minute it ended.
+ */
+@Serializable
+data class RunMessage(
+    val author: MessageAuthor,
+    val text: String,
+    val at: Long = 0L,
+)
+
 /**
  * A single agent run: what it was asked to do, what it did, and how it ended.
  *
@@ -43,6 +64,9 @@ data class RunRecord(
     val status: RunStatus = RunStatus.RUNNING,
     val outcome: String = "",
     val steps: List<RunStep> = emptyList(),
+    val messages: List<RunMessage> = emptyList(),
+    val parentId: String? = null,
+    val vibeId: String? = null,
 ) {
     /** Null while the run is still going, so callers cannot show a duration that grows. */
     val durationMs: Long? get() = endedAt?.minus(startedAt)

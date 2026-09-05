@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -104,7 +105,9 @@ fun VibeDetailScreen(
     val askFor = rememberVibeSourceRequest()
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        // Instructions and notes are the long fields in this app; without this the
+        // keyboard covers the one being typed into.
+        modifier = modifier.fillMaxSize().imePadding(),
         contentPadding = WindowInsets.safeDrawing
             .add(WindowInsets(left = 24.dp, top = 24.dp, right = 24.dp, bottom = 24.dp))
             .asPaddingValues(),

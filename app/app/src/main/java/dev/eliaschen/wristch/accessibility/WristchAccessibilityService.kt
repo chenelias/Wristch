@@ -41,6 +41,7 @@ class WristchAccessibilityService : AccessibilityService() {
                     val o = debugOverlay ?: dev.eliaschen.wristch.computer.StatusOverlay(
                         this@WristchAccessibilityService,
                         dev.eliaschen.wristch.computer.RunControl(),
+                        apiKey = "",
                     ).also { debugOverlay = it }
                     o.show("debug overlay")
                     Log.i("WristchDebug", "overlay on")

@@ -11,8 +11,8 @@ import dev.eliaschen.wristch.vibe.VibeSource
  *
  * Location asks for both accuracies because a vibe only ever wants "which restaurant is
  * this" - coarse is enough, and a user who granted only that should still get a snippet.
- * [VibeSource.NOTES] is missing on purpose: notes live in the vibe itself, so there is no
- * device interface, and nothing to ask for.
+ * [VibeSource.MEMORY] is missing on purpose: memory lives in the app itself, so there is
+ * no device interface, and nothing to ask for.
  */
 val VibeSource.permissions: List<String>
     get() = when (this) {
@@ -23,7 +23,7 @@ val VibeSource.permissions: List<String>
         VibeSource.CALENDAR -> listOf(Manifest.permission.READ_CALENDAR)
         VibeSource.CONTACTS -> listOf(Manifest.permission.READ_CONTACTS)
         VibeSource.MESSAGES -> listOf(Manifest.permission.READ_SMS)
-        VibeSource.NOTES -> emptyList()
+        VibeSource.MEMORY -> emptyList()
     }
 
 /**

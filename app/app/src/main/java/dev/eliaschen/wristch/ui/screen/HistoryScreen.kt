@@ -5,29 +5,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,6 +37,10 @@ import androidx.compose.ui.unit.dp
 import dev.eliaschen.wristch.history.RunHistory
 import dev.eliaschen.wristch.history.RunRecord
 import dev.eliaschen.wristch.history.RunStatus
+import dev.eliaschen.wristch.ui.component.ScreenGutter
+import dev.eliaschen.wristch.ui.component.ScreenHeader
+import dev.eliaschen.wristch.ui.component.TopScrollFade
+import dev.eliaschen.wristch.ui.component.screenListPadding
 import dev.eliaschen.wristch.ui.shape.WristchShapes
 import java.time.Instant
 import java.time.LocalDate
@@ -105,25 +99,7 @@ fun HistoryScreen(
         var confirmClear by remember { mutableStateOf(false) }
         val finished = runs.count { it.status != RunStatus.RUNNING }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back to home",
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Text(
-                text = "History",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f),
-            )
+        ScreenHeader(title = "History", onBack = onBack) {
             // Nothing to clear is not a disabled button, it is no button: the control
             // appears only when there is finished history behind it.
             if (finished > 0) {
@@ -154,7 +130,7 @@ fun HistoryScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 6.dp),
+                .padding(horizontal = ScreenGutter, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             HistoryFilter.entries.forEach { option ->
@@ -174,34 +150,40 @@ fun HistoryScreen(
                     "No ${filter.label.lowercase()} runs."
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 24.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 8.dp),
             )
             return@Column
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = WindowInsets.safeDrawing
-                .add(WindowInsets(left = 24.dp, right = 24.dp, bottom = 24.dp))
-                .asPaddingValues(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // Grouped by day, with the header carried on the first run of each day rather
-            // than as its own item: the list is one flat list of runs, so a sticky-header
-            // API would have to be told about a grouping the data does not have.
+        // The list starts directly under the chips and is allowed to scroll beneath them;
+        // the fade on top of it is what keeps that from reading as a cut-off row.
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = screenListPadding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Grouped by day, with the header carried on the first run of each day
+                // rather than as its own item: the list is one flat list of runs, so a
+                // sticky-header API would have to be told about a grouping the data does
+                // not have.
 
-            itemsIndexed(history, key = { _, run -> run.id }) { index, run ->
-                val previous = history.getOrNull(index - 1)
-                if (previous == null || dayOf(previous) != dayOf(run)) {
-                    Text(
-                        text = dayLabel(dayOf(run)),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                    )
+                itemsIndexed(history, key = { _, run -> run.id }) { index, run ->
+                    val previous = history.getOrNull(index - 1)
+                    if (previous == null || dayOf(previous) != dayOf(run)) {
+                        Text(
+                            text = dayLabel(dayOf(run)),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                        )
+                    }
+                    RunRow(run = run, onClick = { onOpenRun(run.id) })
                 }
-                RunRow(run = run, onClick = { onOpenRun(run.id) })
             }
+
+            TopScrollFade(modifier = Modifier.align(Alignment.TopCenter))
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -32,10 +33,11 @@ import dev.eliaschen.wristch.ui.screen.HomeScreen
 import dev.eliaschen.wristch.ui.component.WristchToolbar
 import dev.eliaschen.wristch.ui.screen.RunDetailScreen
 import dev.eliaschen.wristch.ui.screen.SearchScreen
+import dev.eliaschen.wristch.ui.screen.SettingsScreen
 import dev.eliaschen.wristch.ui.screen.VibeDetailScreen
 import dev.eliaschen.wristch.ui.screen.VibeScreen
-import dev.eliaschen.wristch.ui.screen.NotesScreen
-import dev.eliaschen.wristch.ui.screen.NoteDetailScreen
+import dev.eliaschen.wristch.ui.screen.MemoryScreen
+import dev.eliaschen.wristch.ui.screen.MemoryDetailScreen
 import kotlinx.serialization.Serializable
 
 /**
@@ -78,11 +80,13 @@ private fun pageTransition(forward: Boolean): ContentTransform {
 @Serializable
 data object Home : NavKey
 
+/** Everything the agent and the user remember - what Home's left-hand button opens. */
 @Serializable
-data object Notes : NavKey
+data object Memory : NavKey
 
+/** One remembered thing, in full. */
 @Serializable
-data class NoteDetail(val noteId: String) : NavKey
+data class MemoryDetail(val memoryId: String) : NavKey
 
 /**
  * The full run list. Home shows the last few runs; this is what the arrow beside them
@@ -103,9 +107,13 @@ data object Vibe : NavKey
 @Serializable
 data class VibeDetail(val vibeId: String) : NavKey
 
-/** One field over past runs and the notebook, opened from the toolbar's search bar. */
+/** One field over past runs and memory, opened from the toolbar's search bar. */
 @Serializable
 data object Search : NavKey
+
+/** App-wide switches - what Home's top-right button opens. */
+@Serializable
+data object Settings : NavKey
 
 /**
  * Where a run is started and watched - what the toolbar's action button opens.
@@ -133,6 +141,25 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
     // screen that is itself a search or a run it would only offer you where you already are.
     val showToolbar by remember { derivedStateOf { backStack.lastOrNull() == Home } }
 
+    // A run that has finished asks to be shown, from outside any composition - see
+    // [TaskRoute]. It lands on top of whatever is open, except the composer that started
+    // it, which is replaced: stepping back from a finished run should reach the list, not
+    // the empty box the run was typed into.
+    val pendingRun by TaskRoute.pending.collectAsState()
+    LaunchedEffect(pendingRun) {
+        val id = pendingRun ?: return@LaunchedEffect
+        val top = backStack.lastOrNull()
+        when {
+            top == RunDetail(id) -> Unit
+            top is Agent || top is RunDetail -> {
+                backStack.removeLastOrNull()
+                backStack.add(RunDetail(id))
+            }
+            else -> backStack.add(RunDetail(id))
+        }
+        TaskRoute.consume(id)
+    }
+
     // The Scaffold holds back none of the window: every screen draws to all four edges and
     // pads itself where its own content would otherwise sit under a system bar. Padding the
     // whole app here instead would leave a band of background above and below it.
@@ -159,8 +186,12 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                             onOpenHistory = { backStack.add(History) },
                             onOpenVibe = { backStack.add(VibeDetail(it)) },
                             onOpenVibes = { backStack.add(Vibe) },
-                            onOpenNotes = { backStack.add(Notes) },
+                            onOpenMemory = { backStack.add(Memory) },
+                            onOpenSettings = { backStack.add(Settings) },
                         )
+                    }
+                    entry<Settings> {
+                        SettingsScreen(onBack = { backStack.removeLastOrNull() })
                     }
                     entry<History> {
                         HistoryScreen(
@@ -178,6 +209,14 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                                 // on the record of the run that was copied.
                                 backStack.removeLastOrNull()
                                 backStack.add(Agent(goal))
+                            },
+                            onOpenRun = { backStack.add(RunDetail(it)) },
+                            onContinue = { newRunId ->
+                                // Same replace as above: a follow-up asked for from the
+                                // finish dialog is a new run, and stepping back from it
+                                // should land on history rather than replay the dialog.
+                                backStack.removeLastOrNull()
+                                backStack.add(RunDetail(newRunId))
                             },
                         )
                     }
@@ -199,15 +238,15 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                             onBack = { backStack.removeLastOrNull() },
                         )
                     }
-                    entry<Notes> {
-                        NotesScreen(
-                            onOpenNote = { backStack.add(NoteDetail(it)) },
+                    entry<Memory> {
+                        MemoryScreen(
+                            onOpenMemory = { backStack.add(MemoryDetail(it)) },
                             onBack = { backStack.removeLastOrNull() },
                         )
                     }
-                    entry<NoteDetail> { key ->
-                        NoteDetailScreen(
-                            noteId = key.noteId,
+                    entry<MemoryDetail> { key ->
+                        MemoryDetailScreen(
+                            memoryId = key.memoryId,
                             onBack = { backStack.removeLastOrNull() },
                         )
                     }
@@ -215,6 +254,13 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                         AgentScreen(
                             initialGoal = key.goal,
                             onBack = { backStack.removeLastOrNull() },
+                            onRunStarted = { runId ->
+                                // Replace rather than stack: coming back from the run this
+                                // screen just started should land on history, not on an
+                                // empty composer.
+                                backStack.removeLastOrNull()
+                                backStack.add(RunDetail(runId))
+                            },
                         )
                     }
                 },

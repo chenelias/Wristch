@@ -14,7 +14,7 @@ enum class VibeSource(val label: String, val explanation: String) {
     CALENDAR("Calendar", "Events around now, for time and place"),
     MESSAGES("Message history", "Recent threads with the people this vibe is about"),
     CONTACTS("Contacts", "Who the names in a task refer to"),
-    NOTES("Notes", "Your own notes, as background the model can quote"),
+    MEMORY("Memory", "What you and the agent have remembered, on both sides"),
     ;
 }
 
@@ -69,8 +69,23 @@ data class Vibe(
         val parts = buildList {
             add("You are acting in the \"$name\" vibe.")
             if (subtitle.isNotBlank()) add("It covers: $subtitle.")
-            if (instruction.isNotBlank()) add(instruction.trim())
-            if (notes.isNotBlank()) add("Background you may use:\n${notes.trim()}")
+            // Framed as rules rather than as colour. A vibe is written once and reused
+            // for months, so what it says about which app to message in, or how to
+            // address someone, is more considered than the sentence typed in a hurry on
+            // top of it - and it was being read as a hint and quietly overridden.
+            if (instruction.isNotBlank()) {
+                add(
+                    "Standing instructions for this vibe. Follow them as if they were " +
+                        "part of the task itself:\n${instruction.trim()}",
+                )
+            }
+            if (notes.isNotBlank()) {
+                add(
+                    "Background about the people and things in this vibe. Treat it as " +
+                        "true, and prefer it over any assumption of your own:\n" +
+                        notes.trim(),
+                )
+            }
             if (sources.isNotEmpty()) {
                 add("You may pull in: " + sources.joinToString { it.label.lowercase() } + ".")
             }

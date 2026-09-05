@@ -2,6 +2,7 @@ package dev.eliaschen.wristch.vibe
 
 import android.content.Context
 import android.util.Log
+import dev.eliaschen.wristch.memory.MemoryStore
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +49,10 @@ object VibeStore {
     private val _defaultId = MutableStateFlow<String?>(null)
     val defaultId: StateFlow<String?> = _defaultId.asStateFlow()
 
+    private val _loaded = MutableStateFlow(false)
+    /** True once the store has finished loading from disk. */
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
     private var file: File? = null
 
     /**
@@ -72,6 +77,8 @@ object VibeStore {
 
             _vibes.value = book.vibes
             _defaultId.value = book.defaultId?.takeIf { id -> book.vibes.any { it.id == id } }
+            _loaded.value = true
+            Log.i(TAG, "loaded ${book.vibes.size} vibes, defaultId=${_defaultId.value}, enabled=${book.vibes.count { it.enabled }}")
             persist()
         }
     }
@@ -103,6 +110,10 @@ object VibeStore {
      */
     fun delete(id: String) {
         _vibes.value = _vibes.value.filterNot { it.id == id }
+        // Its memories go with it. They were only ever readable under this vibe, so
+        // leaving them behind would keep them invisible and still counting against the
+        // store's cap - now that the agent writes memories itself, that is a leak.
+        MemoryStore.forgetVibe(id)
         if (_defaultId.value == id) {
             _defaultId.value = _vibes.value.firstOrNull { it.enabled }?.id
         }
@@ -177,7 +188,7 @@ object VibeStore {
                 subtitle = "Just the two of you",
                 instruction = "Keep it personal and unhurried. Never make plans on their " +
                     "behalf without saying so, and check the calendar before suggesting a day.",
-                sources = setOf(VibeSource.CALENDAR, VibeSource.MESSAGES, VibeSource.NOTES),
+                sources = setOf(VibeSource.CALENDAR, VibeSource.MESSAGES, VibeSource.MEMORY),
                 confirmation = VibeConfirmation.ALWAYS,
                 accent = 2,
                 createdAt = now,

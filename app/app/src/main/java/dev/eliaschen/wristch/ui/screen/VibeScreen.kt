@@ -6,23 +6,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -36,6 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.eliaschen.wristch.ui.component.ScreenGutter
+import dev.eliaschen.wristch.ui.component.ScreenHeader
+import dev.eliaschen.wristch.ui.component.screenListPadding
 import dev.eliaschen.wristch.ui.shape.WristchShapes
 import dev.eliaschen.wristch.ui.theme.accentOf
 import dev.eliaschen.wristch.vibe.Vibe
@@ -62,25 +59,7 @@ fun VibeScreen(
     // No Scaffold here: the nav graph already owns one, and nesting a second would apply
     // the window insets twice.
     Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back to home",
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Text(
-                text = "Vibe",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f),
-            )
+        ScreenHeader(title = "Vibe", onBack = onBack) {
             IconButton(onClick = { onOpenVibe(VibeStore.create()) }) {
                 Icon(Icons.Default.Add, contentDescription = "Add a vibe")
             }
@@ -91,14 +70,12 @@ fun VibeScreen(
                 "the agent already knows, and how much it may do on its own.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 8.dp),
         )
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = WindowInsets.safeDrawing
-                .add(WindowInsets(left = 24.dp, right = 24.dp, bottom = 24.dp))
-                .asPaddingValues(),
+            contentPadding = screenListPadding(top = 4.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (vibes.isEmpty()) {

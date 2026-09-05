@@ -3,6 +3,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Voice input on the agent screen: a clip is recorded locally, then sent to Gemini
+         once the user confirms it, so this is asked for at the moment the mic is tapped. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- What a vibe is allowed to pull in before a run starts. Every one of these is
          optional: a source that is not granted simply drops out of the context block,
          so the app works with all of them refused. -->
@@ -19,6 +23,13 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+
+        <!-- Same visibility rule applies to the on-device speech recognizer: without this,
+             SpeechRecognizer.isRecognitionAvailable reports false on API 30+ even when a
+             recognizer is installed. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
     </queries>
 
     <application
@@ -33,6 +44,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:label="@string/app_name"
             android:theme="@style/Theme.Wristch"
             android:windowSoftInputMode="adjustResize">

@@ -1,10 +1,18 @@
 package dev.eliaschen.wristch.computer
 
 import android.content.Context
+import android.content.Intent
+import android.util.Log
+import dev.eliaschen.wristch.MainActivity
+import dev.eliaschen.wristch.TaskRoute
 import dev.eliaschen.wristch.context.VibeContext
+import dev.eliaschen.wristch.history.MessageAuthor
 import dev.eliaschen.wristch.history.RunHistory
+import dev.eliaschen.wristch.history.RunRecord
+import dev.eliaschen.wristch.memory.MemoryStore
+import dev.eliaschen.wristch.settings.SettingsStore
 import dev.eliaschen.wristch.vibe.Vibe
-import dev.eliaschen.wristch.vibe.VibeSource
+import dev.eliaschen.wristch.vibe.VibeConfirmation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,40 +66,34 @@ object AgentSession {
     private var running: RunControl? = null
 
     /**
-     * The one source a run does not carry.
-     *
-     * The notebook is the vibe's own memory rather than something read off the phone, and
-     * it is deliberately left out of what a run is prefaced with - a note is written and
-     * corrected in Wristch, and goes to the model through its own path, not folded into
-     * every goal by default.
-     */
-    private val WITHHELD = setOf(VibeSource.NOTES)
-
-    /**
      * Starts [goal] under [vibe], and returns whether it started at all.
      *
      * The vibe is folded into the prompt here rather than inside the agent: it is a way of
      * working chosen on the screen, and the agent's job is to carry out whatever text it
-     * is handed. That includes what the vibe is allowed to read off the phone - where it
-     * is, what is on the calendar, who the names in the goal refer to - which is the half
-     * of a vibe nobody can type. History records the plain goal, because that is the
-     * sentence the person typed and the one they will look for later.
+     * is handed. That includes everything the vibe is allowed to draw on - where the
+     * phone is, what is on the calendar, who the names in the goal refer to, and what
+     * has been remembered from before - which is the half of a vibe nobody can type.
+     * History records the plain goal, because that is the sentence the person typed and
+     * the one they will look for later.
      */
     fun start(
         context: Context,
         agent: ComputerUseAgent,
         goal: String,
         vibe: Vibe? = null,
+        parent: RunRecord? = null,
     ): Boolean {
         if (_runId.value != null) return false
         val app = context.applicationContext
+
+        Log.i(TAG, "start: vibe=${vibe?.name}, confirmation=${vibe?.confirmation}")
 
         _goal.value = goal
         _steps.value = emptyList()
         _control.value = RunControl.State.RUNNING
         running = agent.control
 
-        val id = RunHistory.start(goal)
+        val id = RunHistory.start(goal, parentId = parent?.id, vibeId = vibe?.id)
         _runId.value = id
 
         job = scope.launch {
@@ -110,15 +112,22 @@ object AgentSession {
                 // can take seconds, and the run is already visible as running by then -
                 // waiting for the phone to answer before showing anything would look like
                 // a button that did nothing.
-                val preface = vibe?.let { VibeContext.preface(app, it, goal, WITHHELD) }
-                val prompt = if (preface == null) goal else "$preface\n\nThe task:\n$goal"
+                val preface = listOfNotNull(
+                    vibe?.let { VibeContext.preface(app, it, goal) },
+                    parent?.let(::carryOver),
+                ).joinToString("\n\n")
+                val prompt = if (preface.isEmpty()) goal else "$preface\n\nThe task:\n$goal"
 
-                val outcome = agent.run(prompt) { step ->
+                val outcome = agent.run(
+                    prompt,
+                    confirmation = vibe?.confirmation ?: VibeConfirmation.ALWAYS,
+                ) { step ->
                     _steps.value = _steps.value + step
                     RunHistory.step(id, step)
                 }
                 _steps.value = _steps.value + outcome
                 RunHistory.finish(id, outcome)
+                learn(agent, vibe, goal, outcome, _steps.value)
             } catch (cancelled: CancellationException) {
                 // The record has to be closed even here, or it stays "running" forever -
                 // and NonCancellable is what lets that write happen in a cancelled scope.
@@ -137,9 +146,92 @@ object AgentSession {
                 mirror.cancel()
                 running = null
                 _runId.value = null
+                // Last, and after the record is closed either way: whatever the app lands
+                // on has to be able to read a finished run, not one still marked running.
+                if (SettingsStore.returnOnFinish.value) show(app, id)
             }
         }
         return true
+    }
+
+    /**
+     * Asks the model what this run taught, and keeps it under [vibe].
+     *
+     * Launched on the session's own scope rather than awaited: the run is over by the
+     * time this is called, and holding [runId] open for one more round trip would leave
+     * the screen saying "running" while nothing is happening to the phone.
+     *
+     * Only ever scoped to a vibe. A memory the agent wrote is an inference, and one
+     * written with no vibe in charge would be visible to every vibe at once - the school
+     * agent reading what the family one concluded. A run started without a vibe therefore
+     * teaches nothing, which is the quiet option and the right default until the user has
+     * said where a thing belongs.
+     */
+    private fun learn(
+        agent: ComputerUseAgent,
+        vibe: Vibe?,
+        goal: String,
+        outcome: String,
+        steps: List<String>,
+    ) {
+        if (vibe == null) return
+        scope.launch {
+            agent.remember(goal, outcome, steps).forEach { MemoryStore.record(it, vibe.id) }
+        }
+    }
+
+    /**
+     * The run [parent] left behind, written for the agent that is picking it up.
+     *
+     * A follow-up is typed with the last run on screen - "try the other one", "now send
+     * her the address" - so it reads as a fragment on its own. The previous task, how it
+     * ended and what was said about it since are what make it a whole instruction again.
+     *
+     * The conversation is included because that is where the correction usually is: the
+     * person asked what went wrong, was told, and is now answering that.
+     */
+    private fun carryOver(parent: RunRecord): String = buildString {
+        append("This continues a task that was already carried out on this phone.\n")
+        append("What was asked for then: ").append(parent.goal).append('\n')
+        if (parent.outcome.isNotBlank()) {
+            append("How it ended: ").append(parent.outcome).append('\n')
+        }
+        val said = parent.messages.takeLast(MAX_CARRIED_MESSAGES)
+        if (said.isNotEmpty()) {
+            append("What was said about it afterwards:\n")
+            said.forEach { message ->
+                append("- ")
+                append(if (message.author == MessageAuthor.USER) "user: " else "you: ")
+                append(message.text)
+                append('\n')
+            }
+        }
+        append(
+            "\nThe new task below was written with all of that in view. Do not repeat what " +
+                "already worked; carry on from it.",
+        )
+    }
+
+    /**
+     * Brings Wristch forward on the run that just ended.
+     *
+     * A run finishes in whatever app it was driving, with the phone in the user's hand and
+     * nothing to act on but a card that fades. The task it just did is the one thing they
+     * might want to question or carry on, so the app comes back to it rather than making
+     * them find it. Both halves are needed: the route for a graph that is already composed
+     * and would otherwise sit on whatever screen it was left on, and the intent for a task
+     * that is in the background - which, after a run, it always is.
+     *
+     * Background activity starts are blocked for ordinary apps; Wristch is exempt while
+     * its accessibility service is bound, which is the only state a run can happen in.
+     */
+    private fun show(context: Context, runId: String) {
+        TaskRoute.open(runId)
+        val intent = Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(MainActivity.EXTRA_RUN_ID, runId)
+        runCatching { context.startActivity(intent) }
+            .onFailure { Log.w(TAG, "could not come back to the task: ${it.message}") }
     }
 
     /** Holds the run at its next safe point; the agent decides where that is. */
@@ -155,4 +247,9 @@ object AgentSession {
      * loop notices, which is how a stopped run keeps the steps it did take.
      */
     fun stop() = running?.stop() ?: Unit
+
+    private const val TAG = "WristchSession"
+
+    /** Enough of the conversation to carry the correction, not the whole thread. */
+    private const val MAX_CARRIED_MESSAGES = 6
 }

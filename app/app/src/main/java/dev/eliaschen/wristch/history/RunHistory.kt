@@ -70,12 +70,20 @@ object RunHistory {
         }
     }
 
-    /** Opens a record for a run that is starting now and returns its id. */
-    fun start(goal: String): String {
+    /**
+     * Opens a record for a run that is starting now and returns its id.
+     *
+     * [parentId] is the run this one was asked for from, when it was: a follow-up typed on
+     * a finished run's own screen is a new run, but it is not a new subject, and the chain
+     * is what lets either end of it be read with the other in view.
+     */
+    fun start(goal: String, parentId: String? = null, vibeId: String? = null): String {
         val record = RunRecord(
             id = UUID.randomUUID().toString(),
             goal = goal,
             startedAt = System.currentTimeMillis(),
+            parentId = parentId,
+            vibeId = vibeId,
         )
         update { listOf(record) + it }
         return record.id
@@ -100,6 +108,20 @@ object RunHistory {
         val cleaned = title.trim()
         if (cleaned.isEmpty()) return
         edit(id) { it.copy(title = cleaned) }
+    }
+
+    /**
+     * Appends one line of the conversation held about a run.
+     *
+     * Written straight through to the file like everything else here: the thread is the
+     * only record of a question that was asked and answered, and there is no save button
+     * on a chat.
+     */
+    fun say(id: String, author: MessageAuthor, text: String) {
+        val cleaned = text.trim()
+        if (cleaned.isEmpty()) return
+        val message = RunMessage(author, cleaned, System.currentTimeMillis())
+        edit(id) { it.copy(messages = it.messages + message) }
     }
 
     fun finish(id: String, outcome: String) = close(id, RunStatus.DONE, outcome)
