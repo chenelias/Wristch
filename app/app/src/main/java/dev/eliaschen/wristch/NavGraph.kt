@@ -34,6 +34,8 @@ import dev.eliaschen.wristch.ui.screen.RunDetailScreen
 import dev.eliaschen.wristch.ui.screen.SearchScreen
 import dev.eliaschen.wristch.ui.screen.VibeDetailScreen
 import dev.eliaschen.wristch.ui.screen.VibeScreen
+import dev.eliaschen.wristch.ui.screen.NotesScreen
+import dev.eliaschen.wristch.ui.screen.NoteDetailScreen
 import kotlinx.serialization.Serializable
 
 /**
@@ -75,6 +77,12 @@ private fun pageTransition(forward: Boolean): ContentTransform {
 
 @Serializable
 data object Home : NavKey
+
+@Serializable
+data object Notes : NavKey
+
+@Serializable
+data class NoteDetail(val noteId: String) : NavKey
 
 /**
  * The full run list. Home shows the last few runs; this is what the arrow beside them
@@ -151,6 +159,7 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                             onOpenHistory = { backStack.add(History) },
                             onOpenVibe = { backStack.add(VibeDetail(it)) },
                             onOpenVibes = { backStack.add(Vibe) },
+                            onOpenNotes = { backStack.add(Notes) },
                         )
                     }
                     entry<History> {
@@ -187,6 +196,18 @@ fun WristchNavGraph(modifier: Modifier = Modifier) {
                     entry<Search> {
                         SearchScreen(
                             onOpenRun = { backStack.add(RunDetail(it)) },
+                            onBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                    entry<Notes> {
+                        NotesScreen(
+                            onOpenNote = { backStack.add(NoteDetail(it)) },
+                            onBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                    entry<NoteDetail> { key ->
+                        NoteDetailScreen(
+                            noteId = key.noteId,
                             onBack = { backStack.removeLastOrNull() },
                         )
                     }

@@ -63,6 +63,7 @@ fun HomeScreen(
     onOpenHistory: () -> Unit,
     onOpenVibe: (String) -> Unit,
     onOpenVibes: () -> Unit,
+    onOpenNotes: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val runs by RunHistory.runs.collectAsState()
@@ -104,6 +105,13 @@ fun HomeScreen(
                 .padding(start = 24.dp, end = 24.dp, top = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
+            // Left-side management entry: open Notes
+            androidx.compose.material3.IconButton(onClick = onOpenNotes, modifier = Modifier.align(Alignment.CenterStart)) {
+                androidx.compose.material3.Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.List,
+                    contentDescription = "Notes",
+                )
+            }
             Text(text = "Wristch", style = MaterialTheme.typography.headlineSmall)
         }
 
