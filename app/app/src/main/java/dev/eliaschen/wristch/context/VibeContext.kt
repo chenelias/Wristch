@@ -28,7 +28,7 @@ object VibeContext {
      * How long one source gets. A location fix is the slow one, and the run is already
      * paying for a model round trip in parallel; past this the answer is not worth the wait.
      */
-    private const val SOURCE_TIMEOUT_MS = 6_000L
+    private const val SOURCE_TIMEOUT_MS = 12_000L
 
     /**
      * Everything [vibe] is allowed to pull in, or null if it came back with nothing.
