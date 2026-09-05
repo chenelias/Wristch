@@ -151,41 +151,19 @@ fun HistoryScreen(
             )
         }
 
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 24.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                HistoryFilter.entries.forEach { option ->
-                    FilterChip(
-                        selected = option == filter,
-                        onClick = { filter = option },
-                        label = { Text(option.label) },
-                    )
-                }
+            HistoryFilter.entries.forEach { option ->
+                FilterChip(
+                    selected = option == filter,
+                    onClick = { filter = option },
+                    label = { Text(option.label) },
+                )
             }
-
-            // Gradient fade to blur the gap between the chips and the list below.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                androidx.compose.ui.graphics.Color.Transparent,
-                            )
-                        )
-                    )
-            )
         }
 
         if (visible.isEmpty()) {
