@@ -18,20 +18,15 @@ import java.io.ByteArrayOutputStream
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 
-/** An encoded screenshot plus the device size its coordinates are expressed in. */
-private class Shot(val bytes: ByteArray, val size: ScreenSize)
+private class Shot(val bytes: ByteArray, val size: ScreenSize, val tree: String)
 
-/**
- * The computer-use loop: show the screen, take back one action, perform it, show the screen
- * again. The model plans; [ActionDispatcher] is the only thing that touches the device.
- *
- * The screenshot rides along as a *function response part*, not as a plain image message -
- * that is what ties each new view of the screen to the action that caused it.
- */
 class ComputerUseAgent(
     private val service: WristchAccessibilityService,
     apiKey: String,
@@ -46,7 +41,10 @@ class ComputerUseAgent(
 
     private val overlay = ConfirmationOverlay(service)
 
-    private val statusOverlay = StatusOverlay(service)
+    /** Pause, resume and stop, driven from the overlay's own buttons. */
+    val control = RunControl()
+
+    private val statusOverlay = StatusOverlay(service, control)
 
     private val config: GenerateContentConfig = GenerateContentConfig.builder()
         .systemInstruction(Content.fromParts(Part.fromText(SYSTEM_INSTRUCTION)))
@@ -88,14 +86,42 @@ class ComputerUseAgent(
         goal: String,
         maxSteps: Int = DEFAULT_MAX_STEPS,
         onStep: (String) -> Unit = {},
-    ): String {
+    ): String = coroutineScope {
+        control.reset()
         statusOverlay.show(goal)
-        return try {
-            val answer = triage(goal)
-            if (answer != null) done(answer) else drive(goal, maxSteps, onStep)
+        try {
+            // Triage is a whole round trip that the device path does not depend on, so it
+            // runs while the phone is going home and settling. On a slow link that hides
+            // the entire preparation inside a request that was going to be paid for
+            // anyway, instead of adding to it.
+            val verdict = async { triage(goal) }
+            val start = prepare()
+            val answer = withTimeoutOrNull(TRIAGE_BUDGET_MS) { verdict.await() }
+            if (answer != null) {
+                verdict.cancel()
+                done(answer)
+            } else {
+                // A triage that has not answered by now has already lost its race with
+                // the device; nothing downstream reads it.
+                verdict.cancel()
+                drive(goal, start, maxSteps, onStep)
+            }
         } finally {
             statusOverlay.hide()
         }
+    }
+
+    /**
+     * Sends the phone home and takes the first look at it.
+     *
+     * The run is started from inside Wristch, so without this the first thing the model
+     * ever sees is our own UI - and it will reason about it, tap our tabs and try to
+     * complete the task inside the app that launched it.
+     */
+    private suspend fun prepare(): Shot? {
+        service.executor.pressHome()
+        delay(HOME_SETTLE_MS)
+        return capture()
     }
 
     /** The answer when the goal was only a question, or null when the device is needed. */
@@ -119,25 +145,30 @@ class ComputerUseAgent(
 
     private suspend fun drive(
         goal: String,
+        start: Shot?,
         maxSteps: Int,
         onStep: (String) -> Unit,
     ): String {
-        // The run is started from inside Wristch, so without this the first thing the
-        // model ever sees is our own UI - and it will reason about it, tap our tabs and
-        // try to complete the task inside the app that launched it.
-        service.executor.pressHome()
-        delay(HOME_SETTLE_MS)
-
-        var shot = capture() ?: return "Screenshot failed; is the service connected?"
+        var shot = start ?: return "Screenshot failed; is the service connected?"
 
         val history = mutableListOf(
             Content.builder()
                 .role("user")
-                .parts(listOf(Part.fromText(goal), Part.fromBytes(shot.bytes, MIME_JPEG)))
+                .parts(
+                    listOfNotNull(
+                        Part.fromText(goal),
+                        shot.tree.takeIf { it.isNotEmpty() }?.let { Part.fromText(it) },
+                        Part.fromBytes(shot.bytes, MIME_JPEG),
+                    ),
+                )
                 .build(),
         )
 
         repeat(maxSteps) {
+            // Asking the model costs seconds and money, so the pause is honoured before
+            // the request rather than after it comes back.
+            if (!control.awaitGo()) return done(STOPPED)
+
             val response = withContext(Dispatchers.IO) {
                 client.models.generateContent(model, history, config)
             }
@@ -161,10 +192,18 @@ class ComputerUseAgent(
                 // The model flags steps it will not take unsupervised - consent dialogs,
                 // payments, messages to other people. Refusing here has to mean the
                 // gesture never happens, so the check sits ahead of the dispatcher.
+                // A single reply can carry several actions; each one is a place the run
+                // can be held or ended, so the gate sits inside the loop, not outside it.
+                if (!control.awaitGo()) return done(STOPPED)
+
+                val before = shot.tree
                 val outcome = if (needsApproval(args) && !approve(args, reason ?: name)) {
                     DECLINED
                 } else {
-                    dispatcher.execute(call, shot.size)
+                    // The strip is touchable now that it carries buttons, which means it
+                    // would swallow a tap the agent aimed at the app beneath it. Taking it
+                    // off screen for the gesture is the same bracket the screenshot needs.
+                    statusOverlay.hiddenDuring { dispatcher.execute(call, shot.size) }
                 }
                 val line = if (reason == null) "$name -> $outcome" else "$name ($reason) -> $outcome"
                 Log.i(TAG, line)
@@ -173,9 +212,23 @@ class ComputerUseAgent(
 
                 // Re-shoot after every action: the next decision must see what this one did.
                 shot = capture() ?: return "Screenshot failed mid-run after $name."
+
+                // A scroll that moved nothing is the only reliable proof a page has no
+                // more to it. Told plainly, it is what stops the model both from scrolling
+                // a finished list forever and from concluding after one screen that what
+                // it wants is not there.
+                val settled = endOfPage(name, before, shot.tree)
+
+                // The tree goes in the response map rather than beside the image, so it
+                // survives trimming: once the screenshot is dropped, this line is all the
+                // history keeps about what that step left on screen.
+                val payload = buildMap {
+                    put("result", outcome + settled)
+                    if (shot.tree.isNotEmpty()) put("screen", shot.tree)
+                }
                 results += Part.fromFunctionResponse(
                     name,
-                    mapOf("result" to outcome),
+                    payload,
                     FunctionResponsePart.fromBytes(shot.bytes, MIME_JPEG),
                 )
             }
@@ -186,6 +239,20 @@ class ComputerUseAgent(
         return done("Stopped after $maxSteps steps without finishing.")
     }
 
+    /**
+     * The sentence to append to a scroll's result: whether the screen actually moved.
+     *
+     * Compared on the element list rather than the image, because a JPEG differs on
+     * animation and antialiasing alone - two screenshots of the same settled page are
+     * rarely identical bytes, while its element list is.
+     */
+    private fun endOfPage(action: String, before: String, after: String): String = when {
+        !action.startsWith("scroll") -> ""
+        before.isEmpty() || after.isEmpty() -> ""
+        before != after -> ""
+        else -> END_OF_PAGE
+    }
+
     /** Parks the outcome on the overlay until it is acknowledged, then returns it. */
     private suspend fun done(outcome: String): String {
         Log.i(TAG, "done: $outcome")
@@ -193,20 +260,39 @@ class ComputerUseAgent(
         return outcome
     }
 
+    /**
+     * Whether the model wants a human to decide this step.
+     *
+     * Compared as text rather than by identity: the value's runtime type is the SDK's
+     * business, and a decision that silently reads as "no approval needed" because it
+     * arrived as a node instead of a String would disable the gate without a trace.
+     */
     private fun needsApproval(args: Map<String, Any?>): Boolean =
-        (args["safety_decision"] as? Map<*, *>)?.get("decision") == REQUIRE_CONFIRMATION
+        safetyField(args, "decision") == REQUIRE_CONFIRMATION
 
     private suspend fun approve(args: Map<String, Any?>, action: String): Boolean {
-        val explanation = (args["safety_decision"] as? Map<*, *>)?.get("explanation") as? String
-        return overlay.confirm(action, explanation ?: "This step needs your approval.")
+        val explanation = safetyField(args, "explanation")
+        // Approvals and refusals both get logged: a gate whose decisions leave no trace
+        // cannot be told apart from a gate that never ran.
+        Log.i(TAG, "approval requested: $action")
+        val allowed = overlay.confirm(action, explanation ?: "This step needs your approval.")
+        Log.i(TAG, "approval ${if (allowed) "granted" else "denied"}: $action")
+        return allowed
     }
 
-    /**
-     * The screen goes up as a downscaled JPEG, but [ScreenSize] stays the *device* size.
-     * Model coordinates are normalised to 0-999, so they are independent of the pixels we
-     * upload - shrinking the image costs upload time and tokens, never accuracy of aim.
-     */
+    private fun safetyField(args: Map<String, Any?>, field: String): String? =
+        when (val raw = args["safety_decision"]) {
+            null -> null
+            is Map<*, *> -> raw[field]?.toString()
+            else -> {
+                Log.w(TAG, "safety_decision is ${raw::class.java.name}, not a map")
+                null
+            }
+        }
+
     private suspend fun capture(): Shot? {
+        // Never photograph a screen that is still moving - see awaitIdle.
+        service.awaitIdle()
         val bitmap = statusOverlay.hiddenDuring { service.captureScreenshot() } ?: return null
         val size = ScreenSize(bitmap.width, bitmap.height)
 
@@ -228,8 +314,9 @@ class ComputerUseAgent(
         bitmap.recycle()
 
         val bytes = stream.toByteArray()
-        Log.i(TAG, "screen ${size.width}x${size.height} -> ${bytes.size / 1024}KB")
-        return Shot(bytes, size)
+        val tree = service.describeScreen(size.width, size.height)
+        Log.i(TAG, "screen ${size.width}x${size.height} -> ${bytes.size / 1024}KB, ${tree.lines().size} elements")
+        return Shot(bytes, size, tree)
     }
 
     /**
@@ -304,10 +391,42 @@ class ComputerUseAgent(
               screens; it is not part of any task.
             - Use `go_back` rather than swiping from a screen edge.
 
+            Reading the screen:
+            - Each screenshot comes with a text list of the elements on it, one per line:
+              `(x,y) Role "label" [flags]`. Those coordinates are already in the coordinate
+              system your actions use - click one as it is written, without converting it.
+            - Trust that list for labels, ids and exact hit points; trust the screenshot
+              for layout and for anything the list does not mention. When the two disagree,
+              the screenshot is right - the list can miss elements drawn on a canvas, in a
+              WebView or in a game.
+
+            Looking for something on a page:
+            - The element list describes only what is on screen right now. Anything below
+              the fold is not in it and not in the screenshot; it is not missing, it is
+              simply further down.
+            - Before deciding that something is not on a page, scroll to the bottom of it.
+              Keep scrolling until a scroll tells you the screen did not move - that, and
+              only that, means you have seen the whole page. One or two screens is not a
+              search.
+            - Read each new screen as it arrives. What you are looking for often sits in a
+              section, an attachment list or a table part-way down, not at the top.
+            - Do not `go_back` from a page that could still hold the answer. Leaving is the
+              step that is expensive to undo: the page has to be found again from scratch.
+
+            Waiting:
+            - A screen that is still loading is not a screen that failed. Spinners,
+              progress bars, blank or half-drawn pages, placeholder boxes, a web page with
+              no content yet - all mean the answer has not arrived. Call `wait` with one
+              second and look again; repeat if it is still loading.
+            - Never act on a half-drawn screen. Anything you tap there is likely to move
+              out from under you as the rest of it lands, and the tap goes to whatever
+              takes its place.
+
             Checking your work:
             - Compare the screenshot after each action with the one before it. If nothing
-              changed, the action did not do what you expected. Do not repeat it - the same
-              action will fail the same way. Try a different element or a different route.
+              changed and nothing is loading, the action did not do what you expected. Do
+              not repeat it - the same action will fail the same way. Try a different
+              element or a different route.
             - A result string describing a failure is telling you what to do next. Read it
               and follow it rather than retrying the step that produced it.
 
@@ -316,11 +435,14 @@ class ComputerUseAgent(
         """.trimIndent()
         private const val MIME_JPEG = "image/jpeg"
         private const val JPEG_QUALITY = 80
-        private const val MAX_UPLOAD_EDGE = 1280f
-        private const val KEEP_SCREENSHOTS = 6
+        private const val MAX_UPLOAD_EDGE = 768f
+        // Counted in history entries, and a step appends two (the model's reply, then
+        // our results) - so this keeps the last two screens, enough to see what changed.
+        private const val KEEP_SCREENSHOTS = 4
         private const val OMITTED = "[earlier screenshot omitted]"
         private const val HOME_SETTLE_MS = 700L
         private const val MIME_JSON = "application/json"
+        private const val TRIAGE_BUDGET_MS = 4000L
 
         private val TRIAGE_INSTRUCTION = """
             You answer questions. A separate system drives the user's Android phone.
@@ -336,8 +458,12 @@ class ComputerUseAgent(
         """.trimIndent()
 
         private const val REQUIRE_CONFIRMATION = "require_confirmation"
+        private const val STOPPED = "Stopped by the user."
+        private const val END_OF_PAGE =
+            " The screen did not move, so this is the bottom of the page - everything " +
+                "it contains has now been shown to you."
         private const val DECLINED = "The user declined this action; do not retry it."
         private const val DEFAULT_MAX_STEPS = 50
-        const val DEFAULT_MODEL = "gemini-3.8-flash"
+        const val DEFAULT_MODEL = "gemini-3.5-flash-lite"
     }
 }

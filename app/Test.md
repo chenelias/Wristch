@@ -6,6 +6,7 @@ itself — `content query`, `dumpsys`, or the app's own screen — not against w
 the agent claimed it did.
 
 ## Results
+前往松山工農資訊科的網站下載實習報告範例
 
 | # | Prompt | Actions | Outcome | Verified against the device |
 |---|--------|--------:|---------|------------------------------|

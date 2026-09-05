@@ -76,6 +76,18 @@ class ScreenExecutor(private val service: AccessibilityService) {
         return if (dispatch(stroke)) ActionResult.Success else ActionResult.Failed("Gesture dispatch was rejected.")
     }
 
+    suspend fun debugTap(x: Float, y: Float, ms: Long, mode: String): ActionResult {
+        val path = android.graphics.Path().apply {
+            moveTo(x, y)
+            when (mode) {
+                "line" -> lineTo(x, y)
+                "nudge" -> lineTo(x + 1f, y + 1f)
+            }
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0, ms)
+        return if (dispatch(stroke)) ActionResult.Success else ActionResult.Failed("rejected")
+    }
+
     suspend fun swipe(
         startX: Float,
         startY: Float,

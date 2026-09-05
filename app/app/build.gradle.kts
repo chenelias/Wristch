@@ -65,19 +65,19 @@ android {
 }
 
 dependencies {
-    implementation("ai.koog:koog-agents:1.2.0")
-    implementation("ai.koog:koog-agents-additions:1.2.0-beta")
-    // Official Google Gen AI SDK
-    implementation("com.google.genai:google-genai:1.70.0")
-
+    implementation(libs.google.genai)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.graphics.shapes)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 

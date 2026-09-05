@@ -5,15 +5,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,7 +35,11 @@ import androidx.compose.ui.unit.dp
 import dev.eliaschen.wristch.BuildConfig
 import dev.eliaschen.wristch.accessibility.WristchAccessibilityService
 import dev.eliaschen.wristch.computer.ComputerUseAgent
+import dev.eliaschen.wristch.history.RunHistory
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AgentScreen(modifier: Modifier = Modifier) {
@@ -61,7 +71,7 @@ fun AgentScreen(modifier: Modifier = Modifier) {
         Text("Agent", style = MaterialTheme.typography.headlineSmall)
 
         val blocker = when {
-            !isConnected -> "Accessibility service is off - turn it on in the Test tab."
+            !isConnected -> "Accessibility service is off - turn it on in the Settings tab."
             BuildConfig.GEMINI_API_KEY.isBlank() ->
                 "No API key. Add geminiApiKey=... to local.properties and rebuild."
             else -> null
@@ -80,7 +90,9 @@ fun AgentScreen(modifier: Modifier = Modifier) {
                 // Only worth the space once there is something to clear, and never while a
                 // run is using the text it would erase.
                 if (goal.isNotEmpty() && !running) {
-                    TextButton(onClick = { goal = "" }) { Text("Clear") }
+                    IconButton(onClick = { goal = "" }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear the goal")
+                    }
                 }
             },
         )
@@ -91,14 +103,32 @@ fun AgentScreen(modifier: Modifier = Modifier) {
                 val prompt = goal
                 steps.clear()
                 running = true
+                // Opened before the run starts so the History tab has something to show
+                // from the first step, not only once the run is over.
+                val runId = RunHistory.start(prompt)
                 scope.launch {
                     try {
-                        val outcome = target.run(prompt) { step -> steps += step }
+                        val outcome = target.run(prompt) { step ->
+                            steps += step
+                            RunHistory.step(runId, step)
+                        }
                         steps += outcome
+                        RunHistory.finish(runId, outcome)
+                    } catch (cancelled: CancellationException) {
+                        // Leaving the Agent tab cancels the scope this run was launched
+                        // in. The record has to be closed anyway, or it stays "running"
+                        // forever - and NonCancellable is what lets that write happen in
+                        // a scope that is already cancelled.
+                        withContext(NonCancellable) {
+                            RunHistory.fail(runId, "Cancelled before it finished.")
+                        }
+                        throw cancelled
                     } catch (error: Exception) {
                         // A failed request should read as a line in the log, not a crash
                         // in the middle of a run that has already moved the real screen.
-                        steps += "error: ${error.message ?: error::class.simpleName}"
+                        val message = "error: ${error.message ?: error::class.simpleName}"
+                        steps += message
+                        RunHistory.fail(runId, message)
                     } finally {
                         running = false
                     }
@@ -106,6 +136,14 @@ fun AgentScreen(modifier: Modifier = Modifier) {
             },
             enabled = agent != null && goal.isNotBlank() && !running,
         ) {
+            if (!running) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.size(8.dp))
+            }
             Text(if (running) "Running..." else "Send")
         }
 
