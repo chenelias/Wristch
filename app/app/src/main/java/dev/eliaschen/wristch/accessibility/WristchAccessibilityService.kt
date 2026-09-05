@@ -53,36 +53,10 @@ class WristchAccessibilityService : AccessibilityService() {
         performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
-    /**
-     * Depth-first search for the first node matching [predicate].
-     *
-     * Hand-rolled rather than using `AccessibilityNodeInfo.findAccessibilityNodeInfosByText`,
-     * which returns nothing at all on Compose UI: Compose draws into a single
-     * AndroidComposeView and exposes its semantics as *virtual* nodes, which that search
-     * never reaches. Measured on this very screen - the built-in search returned 0 nodes
-     * for text this walk finds twice.
-     */
-    fun findNode(
-        root: AccessibilityNodeInfo? = rootInActiveWindow,
-        predicate: (AccessibilityNodeInfo) -> Boolean,
-    ): AccessibilityNodeInfo? {
-        val node = root ?: return null
-        if (predicate(node)) return node
-        for (index in 0 until node.childCount) {
-            findNode(node.getChild(index), predicate)?.let { return it }
-        }
-        return null
-    }
-
-    fun findByText(text: String): AccessibilityNodeInfo? = findNode {
-        it.text?.toString() == text || it.contentDescription?.toString() == text
-    }
-
     fun tapTestButton() {
         serviceScope.launch {
             delay(2.seconds)
-            val node = findByText("Play Store")
-            Log.i(TAG, "tapTestButton -> ${executor.click(node!!)}")
+            Log.i(TAG, "tapTestButton -> ${executor.clickByName("Play Store")}")
         }
     }
 
