@@ -68,18 +68,21 @@ internal object LocationSource {
             }
         }
 
-    /** The street address, when the platform geocoder can name one. */
+    /** The street address or POI name when the platform geocoder can name one. */
     private suspend fun describe(context: Context, fix: Location): String? {
         if (!Geocoder.isPresent()) return null
         val geocoder = Geocoder(context, Locale.getDefault())
         val address: Address? = suspendCancellableCoroutine { continuation ->
-            geocoder.getFromLocation(fix.latitude, fix.longitude, 1) { results ->
-                if (continuation.isActive) continuation.resume(results.firstOrNull())
+            geocoder.getFromLocation(fix.latitude, fix.longitude, 5) { results ->
+                if (continuation.isActive) {
+                    // Prefer a result with a feature name (point-of-interest), otherwise first result.
+                    val best = results.firstOrNull { it.featureName?.isNotBlank() == true } ?: results.firstOrNull()
+                    continuation.resume(best)
+                }
             }
         }
         val line = address?.getAddressLine(0)?.takeIf { it.isNotBlank() } ?: return null
-        // The feature name is the shop or building when there is one, which is the half of
-        // the address a person would actually say out loud.
+        // The feature name is the shop or building when there is one — what a person would say.
         val name = address.featureName?.takeIf { it.isNotBlank() && !line.startsWith(it) }
         return if (name == null) line else "$name, $line"
     }
