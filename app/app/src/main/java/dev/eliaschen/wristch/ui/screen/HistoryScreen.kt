@@ -25,6 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -93,12 +94,8 @@ fun HistoryScreen(
     // A run in flight is the one thing on this screen that is about now rather than about
     // the past, so it sits above the days instead of inside yesterday. Only under "All":
     // asking for finished runs is asking for the ones that are not this.
-    val pinned = if (filter == HistoryFilter.ALL) {
-        runs.filter { it.status == RunStatus.RUNNING }
-    } else {
-        emptyList()
-    }
-    val history = visible.filter { run -> pinned.none { it.id == run.id } }
+    // No pinned "running" item — show history as a single flat list.
+    val history = visible
 
     // No Scaffold here: the nav graph already owns one, and nesting a second would
     // apply the window insets twice.
@@ -113,10 +110,11 @@ fun HistoryScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            FilledTonalIconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back to home",
+                    modifier = Modifier.size(18.dp),
                 )
             }
             Text(
@@ -189,19 +187,6 @@ fun HistoryScreen(
             // Grouped by day, with the header carried on the first run of each day rather
             // than as its own item: the list is one flat list of runs, so a sticky-header
             // API would have to be told about a grouping the data does not have.
-            if (pinned.isNotEmpty()) {
-                item(key = "pinned-header") {
-                    Text(
-                        text = if (pinned.size == 1) "Now running" else "Now running (${pinned.size})",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                    )
-                }
-                items(pinned, key = { it.id }) { run ->
-                    RunRow(run = run, onClick = { onOpenRun(run.id) })
-                }
-            }
 
             itemsIndexed(history, key = { _, run -> run.id }) { index, run ->
                 val previous = history.getOrNull(index - 1)
