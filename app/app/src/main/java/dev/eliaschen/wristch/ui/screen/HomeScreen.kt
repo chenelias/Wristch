@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -106,11 +107,8 @@ fun HomeScreen(
             contentAlignment = Alignment.Center,
         ) {
             // Left-side management entry: open Notes
-            androidx.compose.material3.IconButton(onClick = onOpenNotes, modifier = Modifier.align(Alignment.CenterStart)) {
-                androidx.compose.material3.Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.List,
-                    contentDescription = "Notes",
-                )
+            IconButton(onClick = onOpenNotes, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(imageVector = Icons.Default.List, contentDescription = "Notes")
             }
             Text(text = "Wristch", style = MaterialTheme.typography.headlineSmall)
         }
