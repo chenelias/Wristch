@@ -2,9 +2,7 @@
 
 > Built at the 2026 FUTUREMODE × SITCON Hackathon with ANYI
 
-一個跑在 Android 上的通用手機操作 Agent：用一句話說出你想做的事，它直接在你的手機上點、滑、輸入，把事情做完。
-
-不依賴任何 App 的官方 API，也不需要對方支援 Intent——透過無障礙服務讀畫面、送手勢，因此**手機上裝了什麼就能操作什麼**。
+Android 上的通用 Agent：一句話說出需求，即可在手機上自動點擊、滑動與輸入，在你分身乏術時幫你搞定大小事。
 
 **舉例：**
 
