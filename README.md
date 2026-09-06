@@ -1,5 +1,7 @@
 # Wristch
 
+  <img src="screenshots/wristch-icon-white.png" alt="Wristch app logo" width="150" />
+
 > Built at the 2026 FUTUREMODE × SITCON Hackathon with ANYI
 
 Android 上的通用 Agent：一句話說出需求，即可在手機上自動點擊、滑動與輸入，在你分身乏術時幫你搞定大小事。
@@ -9,13 +11,14 @@ Android 上的通用 Agent：一句話說出需求，即可在手機上自動點
 - 「傳訊息給老師說我明天想討論報告」→ 開啟通訊軟體、找到對象、依 Vibe 設定的語氣撰寫並送出
 - 「叫哥哥來這裡吃飯」→ 自動帶入目前所在餐廳的資訊與 Google Maps 連結
 
-| 首頁 | 語音輸入 | 任務紀錄 | Vibe 設定 |
-| --- | --- | --- | --- |
+| 首頁                                                    | 語音輸入                                                               | 任務紀錄                                                           | Vibe 設定                                                             |
+| ------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | <img src="screenshots/home.png" width="200" alt="首頁"> | <img src="screenshots/agent_listening.png" width="200" alt="語音輸入"> | <img src="screenshots/task_detail.png" width="200" alt="任務紀錄"> | <img src="screenshots/vibe_settings.png" width="200" alt="Vibe 設定"> |
- 
+
 ## 環境
- - Android 15+（`minSdk 35`，`targetSdk 37`）
-- Kotlin / AGP  2.4.10 / 9.3.2
+
+- Android 15+（`minSdk 35`，`targetSdk 37`）
+- Kotlin / AGP 2.4.10 / 9.3.2
 
 ## 建置
 
@@ -84,16 +87,16 @@ echo 'geminiApiKey=你的Gemini_Secret' >> local.properties
 
 ### Agent 迴圈（`computer/ComputerUseAgent.kt`）
 
-| 機制 | 做法與理由 |
-| --- | --- |
-| **開場先回首頁** | 任務是從 Wristch 內啟動的，不先 `pressHome()`，模型看到的第一個畫面就是我們自己的 UI，然後它會開始點我們的分頁、試圖在這個 App 裡完成任務。 |
-| **Triage 併行** | 「明天會不會下雨」不需要動手機。Triage 用 structured output（`needs_device: Boolean`）判斷，並**與回首頁併行執行**，4 秒預算內沒答完就直接走裝置路徑——不替已經要付的 round trip 再加時間。 |
-| **structured output 而非 sentinel** | 早期讓模型回字串 `NEEDS_DEVICE`，遇到「This needs the device, so NEEDS_DEVICE」會判反。boolean 沒有語氣可言。 |
-| **`ask_user` 做成 tool** | 需要追問時，若只叫模型「用某個前綴回覆」，一個手上有工具的模型會做它本來就會做的事——亂點一個然後祈禱。把「問人」變成一個可呼叫的 function，才真的擋得住猜測。 |
-| **截圖裁剪** | 每次請求都會重送整段對話，第 2 步的截圖會在之後每一步被重複計費。只保留最近 4 張影像，更早的換成 `[earlier screenshot omitted]`，但**函式回應裡的 UI Tree 文字保留**——影像被丟掉後，那行文字就是歷史對該步的全部記憶。 |
-| **捲到底判定** | 只比對 UI Tree 而不比對 JPEG：同一個靜止畫面的兩張 JPEG 幾乎不會 byte 相同（動畫、抗鋸齒），但元素列表會。捲動後樹沒變 → 明確告訴模型已到底，避免無限捲動或只看一頁就放棄。 |
-| **執行中插話** | 使用者中途補充的話進 `ConcurrentLinkedQueue`，由 run 自己的 coroutine 在下一輪 drain，**不從別的執行緒直接插進 history**——那是對話順序錯亂的來源。補充內容以獨立 user turn 送出，並註明「比上面都新，衝突時以它為準」。 |
-| **暫停時機** | `awaitGo()` 擋在**送出請求之前**，而不是回來之後：問模型要花錢也花時間。同一則回覆可能含多個動作，所以 gate 放在動作迴圈內部。 |
+| 機制                                | 做法與理由                                                                                                                                                                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **開場先回首頁**                    | 任務是從 Wristch 內啟動的，不先 `pressHome()`，模型看到的第一個畫面就是我們自己的 UI，然後它會開始點我們的分頁、試圖在這個 App 裡完成任務。                                                                             |
+| **Triage 併行**                     | 「明天會不會下雨」不需要動手機。Triage 用 structured output（`needs_device: Boolean`）判斷，並**與回首頁併行執行**，4 秒預算內沒答完就直接走裝置路徑——不替已經要付的 round trip 再加時間。                              |
+| **structured output 而非 sentinel** | 早期讓模型回字串 `NEEDS_DEVICE`，遇到「This needs the device, so NEEDS_DEVICE」會判反。boolean 沒有語氣可言。                                                                                                           |
+| **`ask_user` 做成 tool**            | 需要追問時，若只叫模型「用某個前綴回覆」，一個手上有工具的模型會做它本來就會做的事——亂點一個然後祈禱。把「問人」變成一個可呼叫的 function，才真的擋得住猜測。                                                           |
+| **截圖裁剪**                        | 每次請求都會重送整段對話，第 2 步的截圖會在之後每一步被重複計費。只保留最近 4 張影像，更早的換成 `[earlier screenshot omitted]`，但**函式回應裡的 UI Tree 文字保留**——影像被丟掉後，那行文字就是歷史對該步的全部記憶。  |
+| **捲到底判定**                      | 只比對 UI Tree 而不比對 JPEG：同一個靜止畫面的兩張 JPEG 幾乎不會 byte 相同（動畫、抗鋸齒），但元素列表會。捲動後樹沒變 → 明確告訴模型已到底，避免無限捲動或只看一頁就放棄。                                             |
+| **執行中插話**                      | 使用者中途補充的話進 `ConcurrentLinkedQueue`，由 run 自己的 coroutine 在下一輪 drain，**不從別的執行緒直接插進 history**——那是對話順序錯亂的來源。補充內容以獨立 user turn 送出，並註明「比上面都新，衝突時以它為準」。 |
+| **暫停時機**                        | `awaitGo()` 擋在**送出請求之前**，而不是回來之後：問模型要花錢也花時間。同一則回覆可能含多個動作，所以 gate 放在動作迴圈內部。                                                                                          |
 
 ### 確認機制（`ConfirmationOverlay` / `VibeConfirmation`）
 
@@ -109,7 +112,7 @@ Agent 執行時 Wristch 根本不在前景，App 內的 Dialog 永遠不會被�
 
 Vibe 把「語氣規則」「背景事實」「可讀取的情境來源」「確認層級」綁在同一個情境上，而非全域設定。
 
-- `instruction` 在 prompt 裡標成 *standing instructions, follow as if part of the task itself*——實測中它常被當成參考語氣，被當下匆忙輸入的一句話蓋掉，但 Vibe 是寫一次用好幾個月的東西。
+- `instruction` 在 prompt 裡標成 _standing instructions, follow as if part of the task itself_——實測中它常被當成參考語氣，被當下匆忙輸入的一句話蓋掉，但 Vibe 是寫一次用好幾個月的東西。
 - `instruction` 與 `notes` 拆成兩欄：編輯語氣時不必先捲過一整段人物資料。
 - `VibeContext.gather()` **併發**讀取所有已授權來源，每個來源 12 秒超時，任何一個失敗、未授權或回空都只是從段落中消失，不會中斷任務。
 - 權限逐 Vibe 索取（`VibeSourceAccess`）。位置同時接受粗略定位——Vibe 要的是「這是哪家餐廳」，不是精準座標。
