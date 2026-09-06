@@ -11,25 +11,19 @@
 - 「傳訊息給老師說我明天想討論報告」→ 開啟通訊軟體、找到對象、依 Vibe 設定的語氣撰寫並送出
 - 「叫哥哥來這裡吃飯」→ 自動帶入目前所在餐廳的資訊與 Google Maps 連結
 
----
-
-## 系統需求
-
-| 項目 | 版本 |
-| --- | --- |
-| Android | 15+（`minSdk 35`，`targetSdk 37`） |
-| Kotlin / AGP | 2.4.10 / 9.3.2 |
-| UI | Jetpack Compose（Material 3）+ Navigation 3 |
-| 模型 | `gemini-3.5-flash-lite`（Computer Use，`ENVIRONMENT_MOBILE`） |
-| SDK | `com.google.genai:google-genai` |
+| 首頁 | 語音輸入 | 任務紀錄 | Vibe 設定 |
+| --- | --- | --- | --- |
+| <img src="screenshots/home.png" width="200" alt="首頁"> | <img src="screenshots/agent_listening.png" width="200" alt="語音輸入"> | <img src="screenshots/task_detail.png" width="200" alt="任務紀錄"> | <img src="screenshots/vibe_settings.png" width="200" alt="Vibe 設定"> |
+ 
+## 環境
+ - Android 15+（`minSdk 35`，`targetSdk 37`）
+- Kotlin / AGP  2.4.10 / 9.3.2
 
 ## 建置
 
 ```bash
-# 1. 在 local.properties 加入金鑰（會被寫成 BuildConfig 欄位，不進版控）
-echo 'geminiApiKey=你的金鑰' >> local.properties
+echo 'geminiApiKey=你的Gemini_Secret' >> local.properties
 
-# 2. 建置並安裝
 ./gradlew installDebug
 ```
 
